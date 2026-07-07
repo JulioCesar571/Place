@@ -116,9 +116,8 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 .btn-toggle-inactive{background:linear-gradient(135deg,#1D9E75,#0F6E56);color:#fff;}
 .btn-toggle-inactive:hover{opacity:0.88;transform:translateY(-1px);}
 .monitor-scan-area{background:var(--c1);border:2px dashed var(--c3);border-radius:16px;padding:20px;text-align:center;min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-#mon-scan-reader{width:100%;max-width:420px;}
-#mon-scan-reader video{width:100% !important;height:auto !important;border-radius:12px;object-fit:cover;display:block;}
-#mon-scan-reader canvas{border-radius:12px;}
+#mon-scan-reader{width:100%;max-width:420px;overflow:hidden;border-radius:12px;line-height:0;}
+#mon-scan-reader video{width:100% !important;border-radius:12px;object-fit:cover;display:block;}
 .monitor-scan-result{display:none;margin-top:16px;}
 .monitor-scan-result.show{display:block;}
 .scan-result-card.valid{background:linear-gradient(135deg,#E8F5F3,#B2D9D0);border:2px solid var(--c4);}
@@ -3260,6 +3259,7 @@ async function startMonScanReader() {
     const scanConfig = {
       fps: 10,
       qrbox: { width: 220, height: 220 },
+      aspectRatio: 1.0, // vídeo quadrado — elimina a faixa cinza abaixo da imagem
       // Resolução reduzida = inicialização muito mais rápida (suficiente p/ QR)
       videoConstraints: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
     };
