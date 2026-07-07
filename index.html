@@ -116,6 +116,9 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 .btn-toggle-inactive{background:linear-gradient(135deg,#1D9E75,#0F6E56);color:#fff;}
 .btn-toggle-inactive:hover{opacity:0.88;transform:translateY(-1px);}
 .monitor-scan-area{background:var(--c1);border:2px dashed var(--c3);border-radius:16px;padding:20px;text-align:center;min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+#mon-scan-reader{width:100%;max-width:420px;}
+#mon-scan-reader video{width:100% !important;height:auto !important;border-radius:12px;object-fit:cover;display:block;}
+#mon-scan-reader canvas{border-radius:12px;}
 .monitor-scan-result{display:none;margin-top:16px;}
 .monitor-scan-result.show{display:block;}
 .scan-result-card.valid{background:linear-gradient(135deg,#E8F5F3,#B2D9D0);border:2px solid var(--c4);}
@@ -1049,11 +1052,6 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
           <p class="scan-hint" id="mon-scan-hint">Câmera iniciando... ou use a simulação abaixo.</p>
         </div>
         <button class="btn-demo-mon" style="border-color:var(--c4);color:var(--c6);" onclick="restartCamera()">🔄 Reiniciar câmera</button>
-        <button class="btn-demo-mon" onclick="demoMonitorScan()">Simular — Marcos · Poltrona 5 ✅</button>
-        <button class="btn-demo-mon" onclick="demoMonitorScan2()">Simular — Ana Paula · Poltrona 6 ✅</button>
-        <button class="btn-demo-mon" onclick="demoMonitorScan3()">Simular — Carlos Eduardo · Poltrona 9 ✅</button>
-        <button class="btn-demo-mon" onclick="demoMonitorScan4()">Simular — Fernanda · Poltrona 10 ✅</button>
-        <button class="btn-demo-mon" style="border-color:#D4A017;color:#7A5800;" onclick="demoMonitorWrongBus()">Simular ônibus errado ⚠️</button>
         <div class="monitor-scan-result" id="mon-scan-result">
           <div class="scan-result-card" id="mon-result-card">
             <div class="scan-result-icon" id="mon-result-icon"></div>
@@ -1730,19 +1728,7 @@ function nextFreeMonitorSeat(busId) {
   for (const s of [1, 2]) { if (!taken.has(s)) return s; }
   return null;
 }
-const OCCUPIED_DATA = {
-  3:  'Roberto Alves',
-  7:  'Patrícia Nunes',
-  12: 'Sérgio Fontana',
-  15: 'Juliana Melo',
-  19: 'Diego Carvalho',
-  22: 'Camila Ferraz',
-  28: 'Thiago Borges',
-  31: 'Renata Peixoto',
-  35: 'Lucas Andrade',
-  38: 'Vanessa Costa',
-  42: 'Fernando Gomes'
-};
+const OCCUPIED_DATA = {}; // produção: nenhuma poltrona pré-ocupada
 const occupied = new Map(Object.entries(OCCUPIED_DATA).map(([k,v]) => [Number(k), v]));
 const selected = new Map();
 const TOTAL = 46;
@@ -2950,7 +2936,6 @@ function renderSwapRequests() {
       <div class="swap-req-detail">Aguardando <strong>${r.toName}</strong> responder — sua poltrona ${r.fromSeat} ⇄ poltrona ${r.toSeat}.</div>
       <div class="swap-actions">
         <button class="btn-swap-cancel" onclick="respondSwap('${r.id}', false)">Cancelar pedido</button>
-        <button class="btn-swap-accept" onclick="simulateSwapAccept('${r.id}')" style="flex:none;padding:9px 14px;">🧪 Simular aceite</button>
       </div>
     </div>`;
   });
@@ -2969,10 +2954,6 @@ function respondSwap(id, accept) {
   executeSwap(req);
 }
 
-function simulateSwapAccept(id) {
-  const req = swapRequests.find(r => r.id === id);
-  if (req) executeSwap(req);
-}
 
 function executeSwap(req) {
   req.status = 'accepted';
@@ -3355,81 +3336,10 @@ function processMonitorScan(raw) {
   resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-function demoMonitorScan() {
-  if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
-  const activeBusEl = document.querySelector('#mon-bus-options-list .bus-opt.active');
-  const monBusId   = activeBusEl ? activeBusEl.dataset.bus : '7515';
-  const monBusName = activeBusEl ? BUSES.find(b=>b.id===monBusId).name : '7515 Valter';
-  // Ensure seat 5 is registered as occupied so the boarding map shows it correctly
-  if (!occupied.has(5)) occupied.set(5, 'Marcos Rodrigues');
-  const demo = currentTicket || {
-    valid:true, bus:'Paradiso 1200 Semi-Leito',
-    passenger:'Marcos Rodrigues', cpf:'012.345.678-99',
-    seat:'5', local:'Pampa Hotel', code:'PDS-AB12C-5',
-    busId: monBusId, busName: monBusName,
-    date: new Date().toLocaleDateString('pt-BR') + ' 08:30'
-  };
-  processMonitorScan(JSON.stringify(demo));
-}
 
-function demoMonitorScan2() {
-  if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
-  const activeBusEl = document.querySelector('#mon-bus-options-list .bus-opt.active');
-  const monBusId   = activeBusEl ? activeBusEl.dataset.bus : '7515';
-  const monBusName = activeBusEl ? BUSES.find(b=>b.id===monBusId).name : '7515 Valter';
-  if (!occupied.has(6)) occupied.set(6, 'Ana Paula Souza');
-  processMonitorScan(JSON.stringify({
-    valid:true, bus:'Paradiso 1200 Semi-Leito',
-    passenger:'Ana Paula Souza', cpf:'987.654.321-00',
-    seat:'6', local:'Igreja de Fátima', code:'PDS-CD34E-6',
-    busId: monBusId, busName: monBusName,
-    date: new Date().toLocaleDateString('pt-BR') + ' 08:35'
-  }));
-}
 
-function demoMonitorScan3() {
-  if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
-  const activeBusEl = document.querySelector('#mon-bus-options-list .bus-opt.active');
-  const monBusId   = activeBusEl ? activeBusEl.dataset.bus : '7515';
-  const monBusName = activeBusEl ? BUSES.find(b=>b.id===monBusId).name : '7515 Valter';
-  if (!occupied.has(9)) occupied.set(9, 'Carlos Eduardo Lima');
-  processMonitorScan(JSON.stringify({
-    valid:true, bus:'Paradiso 1200 Semi-Leito',
-    passenger:'Carlos Eduardo Lima', cpf:'321.654.987-11',
-    seat:'9', local:'CTG Porteira do Rio Grande', code:'PDS-EF56G-9',
-    busId: monBusId, busName: monBusName,
-    date: new Date().toLocaleDateString('pt-BR') + ' 08:40'
-  }));
-}
 
-function demoMonitorScan4() {
-  if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
-  const activeBusEl = document.querySelector('#mon-bus-options-list .bus-opt.active');
-  const monBusId   = activeBusEl ? activeBusEl.dataset.bus : '7515';
-  const monBusName = activeBusEl ? BUSES.find(b=>b.id===monBusId).name : '7515 Valter';
-  if (!occupied.has(10)) occupied.set(10, 'Fernanda Oliveira');
-  processMonitorScan(JSON.stringify({
-    valid:true, bus:'Paradiso 1200 Semi-Leito',
-    passenger:'Fernanda Oliveira', cpf:'456.789.123-22',
-    seat:'10', local:'Pampa Hotel', code:'PDS-GH78I-10',
-    busId: monBusId, busName: monBusName,
-    date: new Date().toLocaleDateString('pt-BR') + ' 08:42'
-  }));
-}
 
-function demoMonitorWrongBus() {
-  if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
-  const activeBusEl = document.querySelector('#mon-bus-options-list .bus-opt.active');
-  const monBusId = activeBusEl ? activeBusEl.dataset.bus : '7515';
-  const otherBus = BUSES.find(b => b.id !== monBusId) || BUSES[1];
-  processMonitorScan(JSON.stringify({
-    valid:true, bus:'Paradiso 1200 Semi-Leito',
-    passenger:'Carlos Eduardo Lima', cpf:'321.654.987-11',
-    seat:'20', local:'CTG Porteira do Rio Grande', code:'PDS-MN44W-20',
-    busId: otherBus.id, busName: otherBus.name,
-    date: new Date().toLocaleDateString('pt-BR') + ' 09:00'
-  }));
-}
 
 // ---- ADMIN ----
 // Shared passagens store (all users' tickets — in production this would be a DB)
@@ -3850,16 +3760,6 @@ function parseTicketDate(str) {
 }
 
 function showAdminScreen() {
-  // Seed demo data so admin can see something on first load
-  if (allPassagens.length === 0) {
-    const demo = [
-      { passenger:'Marcos Rodrigues', cpf:'012.345.678-99', seat:'5', local:'Pampa Hotel', date: getTodayStr() + ' 19:30', reservedAt: getTodayStr() + ' 19:30', boardedAt: getTodayStr() + ' 16:38', code:'PDS-AB12C-5', busId:'7515', busName:'7515 Valter', bus:'Paradiso 1200 Semi-Leito', valid:true },
-      { passenger:'Ana Paula Souza', cpf:'987.654.321-00', seat:'12', local:'Igreja de Fátima', date: getTodayStr() + ' 19:35', reservedAt: getTodayStr() + ' 19:35', boardedAt: null, code:'PDS-XY99Z-12', busId:'8313', busName:'8313 Romualdo', bus:'Paradiso 1200 Semi-Leito', valid:true },
-      { passenger:'Carlos Eduardo Lima', cpf:'321.654.987-11', seat:'20', local:'CTG Porteira do Rio Grande', date: getTodayStr() + ' 19:40', reservedAt: getTodayStr() + ' 19:40', boardedAt: null, code:'PDS-MN44W-20', busId:'7515', busName:'7515 Valter', bus:'Paradiso 1200 Semi-Leito', valid:true },
-      { passenger:'Fernanda Oliveira', cpf:'456.789.123-22', seat:'3', local:'Pampa Hotel', date: getTodayStr() + ' 19:42', reservedAt: getTodayStr() + ' 19:42', boardedAt: null, code:'PDS-QR77T-3', busId:'6515', busName:'6515 Uniplac', bus:'Paradiso 1200 Semi-Leito', valid:true },
-    ];
-    allPassagens.push(...demo);
-  }
   renderAdminStats();
   switchAdminTab('relacao');
   showScreen('admin');
