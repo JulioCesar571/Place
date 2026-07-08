@@ -342,13 +342,13 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 
 /* ===== CRIAR USUÁRIO ===== */
 .create-user-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
-.cu-field{display:flex;flex-direction:column;gap:6px;}
+.cu-field{display:flex;flex-direction:column;gap:6px;min-width:0;}
 .cu-field.full{grid-column:1/-1;}
 .cu-label{font-size:11px;font-weight:700;color:var(--c6);letter-spacing:0.05em;text-transform:uppercase;}
-.cu-input{padding:11px 14px;border:1.5px solid var(--c2);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--c7);background:#fff;outline:none;transition:border-color 0.15s;}
+.cu-input{padding:11px 14px;border:1.5px solid var(--c2);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--c7);background:#fff;outline:none;transition:border-color 0.15s;min-width:0;width:100%;}
 .cu-input:focus{border-color:var(--c4);}
 .cu-input.invalid{border-color:#e24b4a;background:#fff8f8;}
-.cu-select{padding:11px 14px;border:1.5px solid var(--c2);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--c7);background:#fff;cursor:pointer;outline:none;}
+.cu-select{padding:11px 14px;border:1.5px solid var(--c2);border-radius:10px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--c7);background:#fff;cursor:pointer;outline:none;min-width:0;width:100%;}
 .cu-select:focus{border-color:var(--c4);}
 .btn-create-user{width:100%;padding:13px;background:linear-gradient(135deg,var(--c4),var(--c6));color:#fff;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:opacity 0.15s,transform 0.12s;}
 .btn-create-user:hover{opacity:0.9;transform:translateY(-1px);}
@@ -382,6 +382,31 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 /* ===== EDITAR USUÁRIO ===== */
 .btn-edit-user{padding:6px 12px;background:none;border:1.5px solid var(--c4);color:var(--c6);font-family:'Syne',sans-serif;font-size:11px;font-weight:700;border-radius:8px;cursor:pointer;margin-left:6px;transition:background 0.15s;}
 .btn-edit-user:hover{background:var(--c1);}
+
+
+/* ===== MOBILE: painel admin ===== */
+@media(max-width:700px){
+  /* Abas principais do admin empilham verticalmente (3 rótulos longos não cabem lado a lado) */
+  .admin-tabs{flex-direction:column;}
+  .admin-tabs .nav-btn{justify-content:flex-start;padding:11px 14px;font-size:13px;}
+  /* Sub-abas de usuários (2 itens) permanecem lado a lado, com texto menor */
+  #adm-panel-usuarios .admin-tabs{flex-direction:row;}
+  #adm-panel-usuarios .admin-tabs .nav-btn{justify-content:center;font-size:12px;padding:10px 8px;}
+  /* Formulário de criação: uma coluna, sem estouro lateral */
+  .create-user-grid{grid-template-columns:1fr;}
+  .admin-card{padding:18px 14px;}
+  /* Barras de filtro empilham e ocupam a largura toda */
+  .filter-bar{flex-direction:column;align-items:stretch;}
+  .filter-group{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .filter-select,.admin-date-input{flex:1;min-width:0;}
+  .admin-search{width:100%;}
+  /* Tabelas roláveis com dica visual */
+  .admin-table-wrap,.user-mgmt-table{font-size:12px;}
+  .export-btns .export-btn{flex:1;justify-content:center;min-width:130px;}
+  /* Área de importação */
+  .import-drop{padding:18px 12px;}
+  .backup-row .btn-secondary-adm{flex:1;text-align:center;}
+}
 
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
@@ -780,8 +805,16 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 
     <div class="app-panel" id="panel-historico">
       <div class="passagens-wrap">
+        <div class="filter-bar" style="margin-bottom:14px;">
+          <div class="filter-group">
+            <span class="filter-label">Período:</span>
+            <select class="filter-select" id="hist-month-filter" onchange="renderHistorico()">
+              <option value="all">Todos os períodos</option>
+            </select>
+          </div>
+        </div>
         <div class="hist-stats">
-          <div class="hist-stat"><div class="hist-stat-num" id="hist-total">0</div><div class="hist-stat-label">Viagens no mês</div></div>
+          <div class="hist-stat"><div class="hist-stat-num" id="hist-total">0</div><div class="hist-stat-label" id="hist-total-label">Viagens</div></div>
           <div class="hist-stat"><div class="hist-stat-num" id="hist-absent" style="color:#922b21;">0</div><div class="hist-stat-label">Ausências</div></div>
           <div class="hist-stat"><div class="hist-stat-num" id="hist-cancel" style="color:#7A5800;">0</div><div class="hist-stat-label">Cancelamentos</div></div>
         </div>
@@ -2642,25 +2675,55 @@ function syncHistoryFromPassagens() {
   });
 }
 
+function monthKeyOf(dateStr) {
+  const d = parseTicketDate(dateStr);
+  if (!d) return null;
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function monthLabelOf(key) {
+  const [y, m] = key.split('-').map(Number);
+  const nome = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long' });
+  return nome.charAt(0).toUpperCase() + nome.slice(1) + '/' + y;
+}
+
 function renderHistorico() {
   if (!currentUser) return;
   syncHistoryFromPassagens();
   const store = historyLoad();
   const hist = store[currentUser.cpf] || [];
 
-  // Estatísticas do mês corrente
-  const now = new Date();
-  const inCurrentMonth = h => {
-    const d = parseTicketDate(h.date);
-    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  };
-  document.getElementById('hist-total').textContent  = hist.filter(h => h.status === 'done' && inCurrentMonth(h)).length;
-  document.getElementById('hist-absent').textContent = hist.filter(h => h.status === 'absent' && inCurrentMonth(h)).length;
-  document.getElementById('hist-cancel').textContent = hist.filter(h => h.status === 'cancelled' && inCurrentMonth(h)).length;
+  // ── Popula o filtro com os meses existentes no histórico (mais recente primeiro)
+  const sel = document.getElementById('hist-month-filter');
+  const prevValue = sel.value || 'all';
+  const monthKeys = [...new Set(hist.map(h => monthKeyOf(h.date)).filter(Boolean))].sort().reverse();
+  sel.innerHTML = '<option value="all">Todos os períodos</option>' +
+    monthKeys.map(k => `<option value="${k}">${monthLabelOf(k)}</option>`).join('');
+  // Mantém a seleção anterior; na primeira abertura, seleciona o mês atual se existir
+  const nowKey = monthKeyOf(new Date().toLocaleDateString('pt-BR'));
+  if (monthKeys.includes(prevValue)) sel.value = prevValue;
+  else if (prevValue === 'all') sel.value = 'all';
+  else if (monthKeys.includes(nowKey)) sel.value = nowKey;
+  else sel.value = 'all';
 
+  // ── Filtra pelo período escolhido
+  const chosen = sel.value;
+  const filtered = chosen === 'all' ? hist : hist.filter(h => monthKeyOf(h.date) === chosen);
+
+  // ── Estatísticas do período filtrado
+  document.getElementById('hist-total').textContent  = filtered.filter(h => h.status === 'done').length;
+  document.getElementById('hist-absent').textContent = filtered.filter(h => h.status === 'absent').length;
+  document.getElementById('hist-cancel').textContent = filtered.filter(h => h.status === 'cancelled').length;
+  const lbl = document.getElementById('hist-total-label');
+  if (lbl) lbl.textContent = chosen === 'all' ? 'Viagens (total)' : 'Viagens em ' + monthLabelOf(chosen);
+
+  // ── Lista
   const list = document.getElementById('historico-list');
-  if (hist.length === 0) {
-    list.innerHTML = '<div class="passagens-empty"><div class="passagens-empty-icon">🕐</div><div class="passagens-empty-title">Sem viagens registradas</div><div class="passagens-empty-sub">Seu histórico será construído automaticamente conforme suas passagens forem concluídas, canceladas ou expiradas na aba Minhas Passagens.</div></div>';
+  if (filtered.length === 0) {
+    const msg = hist.length === 0
+      ? 'Seu histórico será construído automaticamente conforme suas passagens forem concluídas, canceladas ou expiradas na aba Minhas Passagens.'
+      : 'Nenhuma movimentação no período selecionado.';
+    list.innerHTML = `<div class="passagens-empty"><div class="passagens-empty-icon">🕐</div><div class="passagens-empty-title">${hist.length === 0 ? 'Sem viagens registradas' : 'Período vazio'}</div><div class="passagens-empty-sub">${msg}</div></div>`;
     return;
   }
   const meta = {
@@ -2668,7 +2731,7 @@ function renderHistorico() {
     absent:    { ic:'❌', cls:'hi-absent', badge:'hb-absent', label:'Ausente'    },
     cancelled: { ic:'🚫', cls:'hi-cancel', badge:'hb-cancel', label:'Cancelada'  },
   };
-  list.innerHTML = hist.map(h => {
+  list.innerHTML = filtered.map(h => {
     const m = meta[h.status] || meta.done;
     return `<div class="hist-item">
       <div class="hist-item-left">
@@ -2682,6 +2745,7 @@ function renderHistorico() {
     </div>`;
   }).join('');
 }
+
 
 // ══════════════ 3. LISTA DE ESPERA ══════════════
 const waitlist = []; // [{cpf, name, joinedAt}]
