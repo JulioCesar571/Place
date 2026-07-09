@@ -3287,6 +3287,7 @@ function switchMonitorPanel(panel) {
   document.getElementById('mon-nav-2').classList.toggle('active', panel === 'scan');
   document.getElementById('mon-panel-title').textContent = panel === 'config' ? 'Painel do Monitor' : 'Validar Passagens';
   if (panel === 'scan') {
+    dbRefresh(); // sincroniza reservas recentes antes de validar
     buildBoardingMap();
     startMonScanReader();
     loadOfflineList();
@@ -3534,7 +3535,7 @@ function restartCamera() {
   startMonScanReader();
 }
 
-function processMonitorScan(raw) {
+async function processMonitorScan(raw) {
   const resultEl = document.getElementById('mon-scan-result');
   const card = document.getElementById('mon-result-card');
   const icon = document.getElementById('mon-result-icon');
@@ -3554,9 +3555,29 @@ function processMonitorScan(raw) {
       if (j && j.code) { code = j.code; legacyData = j; }
     } catch(_) { /* QR novo: string simples */ }
 
-    // Resolve a passagem: banco sincronizado → lista offline → dados do QR antigo
+    // Resolve a passagem: memória sincronizada → lista offline → dados do QR antigo
     let data = allPassagens.find(p => p.code === code) || resolveOfflineTicket(code) || legacyData;
-    if (!data) throw new Error('not-found');
+
+    // Não achou? Consulta AO VIVO no banco (reserva recém-feita em outro dispositivo)
+    if (!data) {
+      title.textContent = 'Consultando banco...';
+      try {
+        const rows = await sb('/tickets?code=eq.' + encodeURIComponent(code) + '&select=*');
+        if (rows && rows.length) {
+          data = rowToTicket(rows[0]);
+          allPassagens.push(data); // incorpora ao estado local
+        }
+      } catch(e) { /* sem conexão — cai na mensagem abaixo */ }
+    }
+    if (!data) {
+      card.className = 'scan-result-card invalid';
+      icon.textContent = '❌';
+      title.textContent = 'Passagem Não Encontrada';
+      detail.innerHTML = `Código lido: <span>${escapeHtml(code).slice(0, 30)}</span><br><br>Possíveis causas:<br>• Reserva ainda não sincronizada — verifique a conexão<br>• Reserva feita numa versão antiga do sistema (peça para refazer)<br>• QR Code danificado ou de outro sistema`;
+      resultEl.classList.add('show');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
 
     // Bloqueia passagem cancelada ou reutilizada
     if (data.cancelled) {
