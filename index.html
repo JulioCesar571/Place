@@ -408,6 +408,30 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
   .backup-row .btn-secondary-adm{flex:1;text-align:center;}
 }
 
+
+/* ===== RESUMO PÓS-VIAGEM ===== */
+.btn-finish-trip{width:100%;padding:13px;background:linear-gradient(135deg,#7A2E2E,#5a1f1f);color:#fff;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:opacity 0.15s;margin-top:12px;}
+.btn-finish-trip:hover{opacity:0.9;}
+.trip-report-card{background:rgba(255,255,255,0.7);border:1.5px solid var(--c2);border-radius:16px;padding:18px;margin-bottom:14px;}
+.trip-report-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.trip-report-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--c7);}
+.trip-report-sub{font-size:12px;color:var(--c5);margin-top:2px;}
+.trip-report-stats{display:flex;gap:8px;flex-wrap:wrap;}
+.trs-pill{font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;}
+.trs-boarded{background:#E8F5F3;color:#0F6E56;border:1px solid #7EC8BC;}
+.trs-absent{background:#fff0f0;color:#922b21;border:1px solid #e24b4a;}
+.trs-total{background:var(--c1);color:var(--c6);border:1px solid var(--c2);}
+.mosaic{display:grid;grid-template-columns:repeat(2,26px) 14px repeat(2,26px);gap:4px;justify-content:center;background:var(--c1);border-radius:12px;padding:12px;}
+.mosaic-seat{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;}
+.ms-boarded{background:#1D9E75;}
+.ms-absent{background:#e24b4a;}
+.ms-monitor{background:#D4A017;}
+.ms-free{background:#cfe5e1;color:var(--c5);}
+.ms-aisle{width:14px;}
+.mosaic-legend{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--c5);}
+.mosaic-legend span{display:inline-flex;align-items:center;gap:5px;}
+.mosaic-legend i{width:12px;height:12px;border-radius:3px;display:inline-block;}
+
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
 .suspended-card{background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.9);border-radius:28px;padding:48px 40px;width:100%;max-width:480px;box-shadow:0 20px 70px rgba(23,79,73,0.25);text-align:center;}
@@ -1070,6 +1094,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
           </div>
           <button class="btn-download-list" onclick="downloadOfflineList()">📥 Baixar lista de passageiros</button>
         </div>
+        <button class="btn-finish-trip" onclick="finishTrip()">🏁 Encerrar viagem e enviar resumo ao admin</button>
       </div>
 
       <div class="mon-scan-grid">
@@ -1225,6 +1250,10 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 13h2v7H3v-7zm4-5h2v12H7V8zm4-4h2v16h-2V4zm4 7h2v9h-2v-9zm4-3h2v12h-2V8z"/></svg>
         Painel de Ocupação
       </button>
+      <button class="nav-btn" id="adm-tab-4" onclick="switchAdminTab('resumos')">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 12h8v2H8v-2zm0 4h8v2H8v-2z"/></svg>
+        Resumos de Viagem
+      </button>
       <button class="nav-btn" id="adm-tab-3" onclick="switchAdminTab('usuarios')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         Gestão de Usuários
@@ -1341,6 +1370,18 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
           </div>
         </div>
         <div id="occupancy-charts"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: RESUMOS DE VIAGEM -->
+    <div class="admin-tab-panel" id="adm-panel-resumos">
+      <div class="admin-card">
+        <div class="admin-card-title">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 12h8v2H8v-2zm0 4h8v2H8v-2z"/></svg>
+          Resumos Pós-Viagem
+        </div>
+        <div class="bulk-hint">Relatórios gerados pelos monitores ao encerrar cada viagem, com o mosaico de ocupação do ônibus.</div>
+        <div id="trip-reports-list"><div class="admin-empty">Carregando resumos...</div></div>
       </div>
     </div>
 
@@ -4031,10 +4072,114 @@ function switchUserTab(tab) {
   if (tab === 'gestao') renderUsersMgmt();
 }
 
+
+// ---- RESUMO PÓS-VIAGEM ----
+function dbInsertTripReport(r) {
+  return sb('/trip_reports', { method: 'POST', body: JSON.stringify([r]) }).catch(dbErr);
+}
+
+async function finishTrip() {
+  const busId = currentBusContext();
+  if (!busId) { showToast('Selecione o ônibus em que você está atuando (aba Meu Perfil).'); return; }
+  const bus = BUSES.find(b => b.id === busId) || { name: busId };
+  if (!window.confirm(`Encerrar a viagem do ${bus.name}?\n\nPassageiros que não embarcaram serão marcados como AUSENTES e o resumo será enviado ao admin.`)) return;
+
+  const today = getTodayStr();
+  const tripTickets = allPassagens.filter(t =>
+    !t.cancelled && t.busId === busId && t.date && t.date.startsWith(today));
+
+  const boarded = tripTickets.filter(t => t.boardedAt);
+  const absent  = tripTickets.filter(t => !t.boardedAt);
+
+  // Marca ausentes no histórico de cada passageiro (retroalimentação)
+  absent.forEach(t => {
+    recordHistory(t.cpf, { code: t.code, date: t.date, seat: t.seat, local: t.local, bus: t.busName || t.bus, status: 'absent' });
+  });
+
+  // Mosaico: estado de cada poltrona (1-46) nesta viagem
+  const seatStatus = {};
+  rebuildMonitorSeats(busId);
+  for (let s = 1; s <= 46; s++) {
+    if (MONITOR_SEATS.has(s)) { seatStatus[s] = 'monitor'; continue; }
+    const tk = tripTickets.find(t => String(t.seat).split(',').map(x=>parseInt(x.trim())).includes(s));
+    seatStatus[s] = tk ? (tk.boardedAt ? 'boarded' : 'absent') : 'free';
+  }
+
+  const report = {
+    date: today,
+    bus_id: busId,
+    bus_name: bus.name,
+    monitor_name: currentUser ? currentUser.name : '—',
+    boarded: boarded.length,
+    absent: absent.length,
+    total: tripTickets.length,
+    seats: seatStatus
+  };
+  await dbInsertTripReport(report);
+  showToast(`🏁 Viagem encerrada! Resumo enviado: ${boarded.length} embarcaram, ${absent.length} ausente(s).`);
+}
+
+function mosaicHtml(seats) {
+  // Layout 2+2 com corredor; últimas: 45,46 à esquerda + WC
+  let html = '<div class="mosaic">';
+  for (let row = 0; row < 11; row++) {
+    const base = row * 4;
+    [base+1, base+2].forEach(n => { html += mosaicSeat(n, seats); });
+    html += '<div class="ms-aisle"></div>';
+    [base+3, base+4].forEach(n => { html += mosaicSeat(n, seats); });
+  }
+  html += mosaicSeat(45, seats) + mosaicSeat(46, seats);
+  html += '<div class="ms-aisle"></div>';
+  html += '<div class="mosaic-seat ms-free" style="grid-column:span 2;width:auto;font-size:8px;">WC</div>';
+  html += '</div>';
+  html += `<div class="mosaic-legend">
+    <span><i style="background:#1D9E75"></i>Embarcou</span>
+    <span><i style="background:#e24b4a"></i>Ausente</span>
+    <span><i style="background:#D4A017"></i>Monitor</span>
+    <span><i style="background:#cfe5e1"></i>Livre</span>
+  </div>`;
+  return html;
+}
+function mosaicSeat(n, seats) {
+  const st = (seats && seats[n]) || 'free';
+  const cls = st === 'boarded' ? 'ms-boarded' : st === 'absent' ? 'ms-absent' : st === 'monitor' ? 'ms-monitor' : 'ms-free';
+  return `<div class="mosaic-seat ${cls}">${n}</div>`;
+}
+
+async function loadTripReports() {
+  const el = document.getElementById('trip-reports-list');
+  if (!el) return;
+  el.innerHTML = '<div class="admin-empty">Carregando resumos...</div>';
+  try {
+    const rows = await sb('/trip_reports?select=*&order=created_at.desc&limit=30');
+    if (!rows.length) {
+      el.innerHTML = '<div class="admin-empty">Nenhum resumo ainda. Os monitores geram resumos ao encerrar cada viagem (botão 🏁 no painel de validação).</div>';
+      return;
+    }
+    el.innerHTML = rows.map(r => `
+      <div class="trip-report-card">
+        <div class="trip-report-head">
+          <div>
+            <div class="trip-report-title">🚌 ${r.bus_name || r.bus_id} — ${r.date}</div>
+            <div class="trip-report-sub">Encerrada por ${r.monitor_name} · ${new Date(r.created_at).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+          </div>
+          <div class="trip-report-stats">
+            <span class="trs-pill trs-boarded">✅ ${r.boarded} embarcaram</span>
+            <span class="trs-pill trs-absent">❌ ${r.absent} ausente(s)</span>
+            <span class="trs-pill trs-total">${r.total} reservas</span>
+          </div>
+        </div>
+        ${mosaicHtml(r.seats)}
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="admin-empty">⚠️ Não foi possível carregar os resumos. Verifique se a tabela trip_reports foi criada no banco (script SQL) e a conexão.</div>';
+  }
+}
+
 // ---- ADMIN TABS ----
 function switchAdminTab(tab) {
-  const map = { relacao: 1, ocupacao: 2, usuarios: 3 };
-  ['relacao','ocupacao','usuarios'].forEach(t => {
+  const map = { relacao: 1, ocupacao: 2, usuarios: 3, resumos: 4 };
+  ['relacao','ocupacao','usuarios','resumos'].forEach(t => {
     const panel = document.getElementById('adm-panel-' + t);
     if (panel) panel.classList.toggle('active', t === tab);
     const btn = document.getElementById('adm-tab-' + map[t]);
@@ -4043,6 +4188,7 @@ function switchAdminTab(tab) {
   if (tab === 'relacao') renderAdminTable();
   if (tab === 'ocupacao') renderOccupancyCharts();
   if (tab === 'usuarios') renderUsersMgmt();
+  if (tab === 'resumos') loadTripReports();
 }
 
 function onOccPeriodChange() {
