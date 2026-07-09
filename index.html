@@ -2461,10 +2461,9 @@ function openTicket(idx) {
   const qrEl = document.getElementById('ticket-qrcode');
   qrEl.innerHTML = '';
   try {
-    new QRCode(qrEl, { text: JSON.stringify(t), width:180, height:180, colorDark:'#174F49', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.H });
+    new QRCode(qrEl, { text: t.code, width:180, height:180, colorDark:'#174F49', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M });
   } catch(e) {
-    const safe = {...t}; delete safe.cpf;
-    const enc = encodeURIComponent(JSON.stringify(safe));
+    const enc = encodeURIComponent(t.code);
     qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${enc}" width="180" height="180" style="border-radius:8px" alt="QR Code da passagem">`;
   }
   showScreen('ticket');
@@ -2706,16 +2705,16 @@ function confirmSeats() {
   const qrEl = document.getElementById('ticket-qrcode');
   qrEl.innerHTML = '';
   try {
+    // QR contém APENAS o código — os dados completos vêm do banco na validação.
+    // QR pequeno e esparso = leitura instantânea, mesmo de telas de celular.
     new QRCode(qrEl, {
-      text: JSON.stringify(currentTicket),
+      text: currentTicket.code,
       width: 180, height: 180,
       colorDark: '#174F49', colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.H
+      correctLevel: QRCode.CorrectLevel.M
     });
   } catch(e) {
-    // Fallback: external QR API — strip CPF to avoid sending personal data to third party
-    const safe = {...currentTicket}; delete safe.cpf;
-    const encoded = encodeURIComponent(JSON.stringify(safe));
+    const encoded = encodeURIComponent(currentTicket.code);
     qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}" width="180" height="180" style="border-radius:8px" alt="QR Code da passagem">`;
   }
 
@@ -3515,7 +3514,7 @@ async function startMonScanReader() {
       qrbox: { width: 220, height: 220 },
       aspectRatio: 1.0, // vídeo quadrado — elimina a faixa cinza abaixo da imagem
       // Resolução reduzida = inicialização muito mais rápida (suficiente p/ QR)
-      videoConstraints: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+      videoConstraints: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
     };
 
     await monScanReader.start(cameraConfig, scanConfig, (decoded) => {
@@ -3547,11 +3546,36 @@ function processMonitorScan(raw) {
   const monitorBusId = activeBusEl ? activeBusEl.dataset.bus : null;
 
   try {
-    let data = JSON.parse(raw);
-    // Offline fallback: if the QR only has a code (or data seems partial), resolve from downloaded list
-    if ((!data.passenger || !data.seat) && data.code) {
-      const cached = resolveOfflineTicket(data.code);
-      if (cached) data = cached;
+    // Extrai o código: QR novo = código puro; QR antigo = JSON completo (retrocompatível)
+    let code = String(raw).trim();
+    let legacyData = null;
+    try {
+      const j = JSON.parse(raw);
+      if (j && j.code) { code = j.code; legacyData = j; }
+    } catch(_) { /* QR novo: string simples */ }
+
+    // Resolve a passagem: banco sincronizado → lista offline → dados do QR antigo
+    let data = allPassagens.find(p => p.code === code) || resolveOfflineTicket(code) || legacyData;
+    if (!data) throw new Error('not-found');
+
+    // Bloqueia passagem cancelada ou reutilizada
+    if (data.cancelled) {
+      card.className = 'scan-result-card invalid';
+      icon.textContent = '🚫';
+      title.textContent = 'Passagem Cancelada';
+      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Esta passagem foi cancelada e não é válida para embarque.`;
+      resultEl.classList.add('show');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
+    if (data.boardedAt) {
+      card.className = 'scan-result-card wrong-bus';
+      icon.textContent = '⚠️';
+      title.textContent = 'Passagem Já Utilizada';
+      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Embarque já registrado às <span>${data.boardedAt}</span>.`;
+      resultEl.classList.add('show');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
     }
     if (!data.valid || data.bus !== 'Paradiso 1200 Semi-Leito') throw new Error('invalid');
 
