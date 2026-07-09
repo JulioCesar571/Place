@@ -1560,6 +1560,174 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 
 <script>
 
+
+// ═══════════════════════════════════════════════════════════════
+// SUPABASE — BANCO DE DADOS CENTRAL (dados compartilhados entre dispositivos)
+// ═══════════════════════════════════════════════════════════════
+const SB_URL  = 'https://mqkyqlconpldxcnviepy.supabase.co/rest/v1';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xa3lxbGNvbnBsZHhjbnZpZXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM0MDcsImV4cCI6MjA5OTA5OTQwN30.KUOqiCq8as7IJFGcG006rWsY1CJhQxbKLLuU5q3v7LE';
+let dbOnline = false; // indica se a última operação com o banco funcionou
+
+async function sb(path, options = {}) {
+  const res = await fetch(SB_URL + path, {
+    ...options,
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': options.prefer || 'return=minimal',
+      ...(options.headers || {})
+    }
+  });
+  if (!res.ok) throw new Error('DB ' + res.status + ' ' + (await res.text()).slice(0, 120));
+  dbOnline = true;
+  if ((options.method || 'GET') === 'GET' || (options.prefer || '').includes('representation')) {
+    return res.json();
+  }
+  return null;
+}
+
+// Conversores linha ⇄ objeto do app
+function rowToUser(r) {
+  const u = { cpf: r.cpf, name: r.name, pass: r.pass, initials: r.initials || getInitials(r.name), role: r.role };
+  if (r.priority) u.priority = r.priority;
+  if (r.seat) u.seat = r.seat;
+  if (r.bus_id) u.busId = r.bus_id;
+  if (r.custom) u.custom = true;
+  return u;
+}
+function userToRow(u) {
+  return { cpf: u.cpf, name: u.name, pass: u.pass, initials: u.initials || null, role: u.role,
+           priority: u.priority || null, seat: u.seat || null, bus_id: u.busId || null, custom: !!u.custom };
+}
+function rowToTicket(r) {
+  return { code: r.code, cpf: r.cpf, passenger: r.passenger, seat: r.seat, local: r.local,
+           busId: r.bus_id, busName: r.bus_name, bus: r.bus, date: r.date,
+           reservedAt: r.reserved_at, boardedAt: r.boarded_at, cancelled: r.cancelled,
+           cancelReason: r.cancel_reason, valid: r.valid };
+}
+function ticketToRow(t) {
+  return { code: t.code, cpf: t.cpf, passenger: t.passenger, seat: String(t.seat), local: t.local,
+           bus_id: t.busId || null, bus_name: t.busName || null, bus: t.bus || null, date: t.date || null,
+           reserved_at: t.reservedAt || null, boarded_at: t.boardedAt || null, cancelled: !!t.cancelled,
+           cancel_reason: t.cancelReason || null, valid: t.valid !== false };
+}
+
+// ── Escritas (write-through) ──────────────────────────────────
+const dbErr = e => { dbOnline = false; console.warn('DB:', e.message); showToast('⚠️ Sem conexão com o banco — a ação pode não ter sido sincronizada.'); };
+
+function dbSaveUser(u)        { return sb('/users', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([userToRow(u)]) }).catch(dbErr); }
+function dbDeleteUser(cpf)    { return sb('/users?cpf=eq.' + encodeURIComponent(cpf), { method: 'DELETE' }).catch(dbErr); }
+function dbInsertTicket(t)    { return sb('/tickets', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([ticketToRow(t)]) }).catch(dbErr); }
+function dbPatchTicket(code, fields) { return sb('/tickets?code=eq.' + encodeURIComponent(code), { method: 'PATCH', body: JSON.stringify(fields) }).catch(dbErr); }
+function dbInsertHistory(cpf, h) {
+  return sb('/history', { method: 'POST', prefer: 'resolution=ignore-duplicates', body: JSON.stringify([{
+    cpf, code: h.code, date: h.date || null, seat: String(h.seat || ''), local: h.local || null, bus: h.bus || null, status: h.status
+  }]) }).catch(dbErr);
+}
+function dbJoinWaitlist(w)    { return sb('/waitlist', { method: 'POST', prefer: 'resolution=ignore-duplicates', body: JSON.stringify([{ cpf: w.cpf, name: w.name }]) }).catch(dbErr); }
+function dbLeaveWaitlist(cpf) { return sb('/waitlist?cpf=eq.' + encodeURIComponent(cpf), { method: 'DELETE' }).catch(dbErr); }
+function dbSaveSwap(s)        { return sb('/swaps', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([{
+  id: s.id, from_cpf: s.fromCpf, from_name: s.fromName, from_seat: s.fromSeat,
+  to_cpf: s.toCpf, to_name: s.toName, to_seat: s.toSeat, status: s.status }]) }).catch(dbErr); }
+function dbSavePresence(key, active) { return sb('/monitor_presence', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([{ key, active }]) }).catch(dbErr); }
+
+// ── Leitura completa + sincronização do estado ────────────────
+let dbRefreshBusy = false;
+async function dbRefresh() {
+  if (dbRefreshBusy) return;
+  dbRefreshBusy = true;
+  try {
+    const [usersRows, ticketRows, waitRows, swapRows, presRows] = await Promise.all([
+      sb('/users?select=*'),
+      sb('/tickets?select=*&order=created_at.desc&limit=2000'),
+      sb('/waitlist?select=*&order=joined_at.asc'),
+      sb("/swaps?select=*&status=eq.pending"),
+      sb('/monitor_presence?select=*'),
+    ]);
+
+    // USUÁRIOS
+    Object.keys(USERS).forEach(cpf => delete USERS[cpf]);
+    usersRows.forEach(r => { USERS[r.cpf] = rowToUser(r); });
+
+    // PASSAGENS (todas, para admin/histórico) + estado do dia
+    allPassagens.length = 0;
+    ticketRows.forEach(r => allPassagens.push(rowToTicket(r)));
+
+    const today = getTodayStr();
+    occupied.clear();
+    boardedSeats.clear();
+    allPassagens.forEach(t => {
+      if (t.cancelled) return;
+      if (!t.date || !t.date.startsWith(today)) return;
+      String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => {
+        occupied.set(n, t.passenger);
+        if (t.boardedAt) boardedSeats.add(n);
+      });
+    });
+
+    // Passagens do usuário logado (hoje)
+    if (currentUser) {
+      passagens.length = 0;
+      allPassagens
+        .filter(t => t.cpf === currentUser.cpf && t.date && t.date.startsWith(today))
+        .forEach(t => passagens.push(t));
+    }
+
+    // LISTA DE ESPERA
+    waitlist.length = 0;
+    waitRows.forEach(r => waitlist.push({ cpf: r.cpf, name: r.name, joinedAt: new Date(r.joined_at) }));
+
+    // TROCAS pendentes
+    swapRequests.length = 0;
+    swapRows.forEach(r => swapRequests.push({ id: r.id, fromCpf: r.from_cpf, fromName: r.from_name, fromSeat: r.from_seat,
+      toCpf: r.to_cpf, toName: r.to_name, toSeat: r.to_seat, status: r.status }));
+
+    // PRESENÇA DE MONITORES
+    presRows.forEach(r => { monitorSeatActive[r.key] = r.active; });
+
+    rebuildMonitorSeats(currentBusContext());
+    refreshVisiblePanels();
+  } catch(e) {
+    dbOnline = false;
+    console.warn('dbRefresh:', e.message);
+  } finally {
+    dbRefreshBusy = false;
+  }
+}
+
+// Re-renderiza apenas o que está visível, preservando seleções em andamento
+function refreshVisiblePanels() {
+  try {
+    const appVisible = document.getElementById('screen-app') && document.getElementById('screen-app').classList.contains('active');
+    if (appVisible) {
+      const seatsActive = document.getElementById('panel-seats') && document.getElementById('panel-seats').classList.contains('active');
+      if (seatsActive && typeof selected !== 'undefined' && selected.size === 0 && document.getElementById('cabin').children.length) buildCabin();
+      if (document.getElementById('panel-passagens').classList.contains('active')) renderPassagens();
+      if (document.getElementById('panel-historico').classList.contains('active')) renderHistorico();
+      updatePassagensBadge();
+      updateWaitlistUI();
+    }
+    const monVisible = document.getElementById('screen-monitor') && document.getElementById('screen-monitor').classList.contains('active');
+    if (monVisible && document.getElementById('mon-panel-scan').classList.contains('active')) buildBoardingMap();
+    const admVisible = document.getElementById('screen-admin') && document.getElementById('screen-admin').classList.contains('active');
+    if (admVisible) { renderAdminStats(); renderAdminTable(); renderOccupancyCharts(); }
+  } catch(e) { /* painéis podem não existir ainda */ }
+}
+
+// Histórico do usuário vindo do banco → cache local usado pelo renderHistorico
+async function dbLoadHistory(cpf) {
+  try {
+    const rows = await sb('/history?cpf=eq.' + encodeURIComponent(cpf) + '&select=*&order=created_at.desc');
+    const store = historyLoad();
+    store[cpf] = rows.map(r => ({ code: r.code, date: r.date, seat: r.seat, local: r.local, bus: r.bus, status: r.status }));
+    historySave(store);
+  } catch(e) { console.warn('history:', e.message); }
+}
+
+// Polling: mantém todos os dispositivos sincronizados
+setInterval(() => { if (currentUser) dbRefresh(); }, 20000);
+
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA DE LICENÇA REMOTA (controle externo pelo fornecedor)
 // ═══════════════════════════════════════════════════════════════
@@ -1703,6 +1871,7 @@ setTimeout(() => {
 
 // Kick off on load
 verifyLicense();
+dbRefresh(); // primeira carga do banco (usuários p/ login em qualquer dispositivo)
 
 // ---- STATE ----
 const USERS = {
@@ -2190,6 +2359,7 @@ function doCancel() {
     allPassagens[apIdx].cancelled = true;
     allPassagens[apIdx].cancelReason = motivo;
   }
+  dbPatchTicket(t.code, { cancelled: true, cancel_reason: motivo });
 
   // Free ALL seats of this ticket (handles "5" and "5, 6")
   String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(seatNum => {
@@ -2232,7 +2402,7 @@ function switchPanel(panel) {
     if (nav) nav.classList.toggle('active', panel === p);
   });
   if (panel === 'passagens') renderPassagens();
-  if (panel === 'historico') renderHistorico();
+  if (panel === 'historico') { if (currentUser) dbLoadHistory(currentUser.cpf).then(renderHistorico); renderHistorico(); }
   if (panel === 'seats') setTimeout(checkBookingWindow, 50);
 }
 
@@ -2326,9 +2496,11 @@ function maskCPF(el) {
   el.value = v;
 }
 
-function doLogin() {
+async function doLogin() {
   const cpf = document.getElementById('login-cpf').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
+  // Garante base atualizada do banco antes de validar (login de qualquer dispositivo)
+  if (!USERS[cpf]) { showToast('Verificando...'); await dbRefresh(); }
   const user = USERS[cpf];
   if (!user || user.pass !== pass) { showToast('CPF ou senha incorretos'); return; }
   // External block list (controlled by the vendor's license file)
@@ -2341,6 +2513,8 @@ function doLogin() {
 
 function loginSuccess(user) {
   currentUser = user;
+  dbRefresh();
+  dbLoadHistory(user.cpf);
   if (user.role === 'admin') { showAdminScreen(); return; }
   if (user.role === 'monitor') { showMonitorScreen(); return; }
   if (user.role === 'passenger' && getPriority(user) === 'blocked') { showScreen('blocked'); return; }
@@ -2515,6 +2689,7 @@ function confirmSeats() {
   });
   passagens.push({...currentTicket});
   allPassagens.push({...currentTicket});
+  dbInsertTicket(currentTicket);
   updatePassagensBadge();
   updateUI();
 
@@ -2649,6 +2824,7 @@ function recordHistory(cpf, entry) {
   const store = historyLoad();
   if (!store[cpf]) store[cpf] = [];
   if (store[cpf].some(h => h.code === entry.code && h.status === entry.status)) return;
+  dbInsertHistory(cpf, entry);
   store[cpf].unshift({
     code: entry.code,
     date: entry.date || new Date().toLocaleDateString('pt-BR'),
@@ -2759,6 +2935,7 @@ function joinWaitlist() {
   if (!currentUser) return;
   if (waitlist.some(w => w.cpf === currentUser.cpf)) { showToast('Você já está na lista de espera.'); return; }
   waitlist.push({ cpf: currentUser.cpf, name: currentUser.name, joinedAt: new Date() });
+  dbJoinWaitlist({ cpf: currentUser.cpf, name: currentUser.name });
   showToast(`✅ Você entrou na lista de espera — posição ${waitlist.length}`);
   updateWaitlistUI();
 }
@@ -2766,6 +2943,7 @@ function joinWaitlist() {
 function leaveWaitlist() {
   const idx = waitlist.findIndex(w => w.cpf === currentUser.cpf);
   if (idx >= 0) waitlist.splice(idx, 1);
+  dbLeaveWaitlist(currentUser.cpf);
   showToast('Você saiu da lista de espera.');
   updateWaitlistUI();
 }
@@ -2832,6 +3010,7 @@ function updateWaitlistUI() {
 function notifyWaitlist(freedSeat) {
   if (waitlist.length === 0) return;
   const first = waitlist.shift();
+  dbLeaveWaitlist(first.cpf);
   waitlistOffer = { cpf: first.cpf, seatNum: freedSeat, expiresAt: Date.now() + 15*60000 };
   if (currentUser && currentUser.cpf === first.cpf) {
     showToast(`🎉 Poltrona ${freedSeat} vagou — é sua vez na lista de espera!`);
@@ -2965,12 +3144,14 @@ function requestSwap(targetSeat) {
   const targetName = occupied.get(targetSeat) || 'Passageiro';
   // Find target's cpf via allPassagens
   const targetTicket = allPassagens.find(p => !p.cancelled && String(p.seat).split(',').map(s=>parseInt(s.trim())).includes(targetSeat));
-  swapRequests.push({
+  const newSwap = {
     id: 'SW-' + Math.random().toString(36).slice(2,7).toUpperCase(),
     fromCpf: currentUser.cpf, fromName: currentUser.name, fromSeat: parseInt(myTicket.seat),
     toCpf: targetTicket ? targetTicket.cpf : null, toName: targetName, toSeat: targetSeat,
     status: 'pending'
-  });
+  };
+  swapRequests.push(newSwap);
+  dbSaveSwap(newSwap);
   exitSwapMode();
   showToast(`Solicitação de troca enviada para ${targetName.split(' ')[0]} (poltrona ${targetSeat})`);
   switchPanel('passagens');
@@ -3010,6 +3191,7 @@ function respondSwap(id, accept) {
   if (!req) return;
   if (!accept) {
     req.status = 'declined';
+    dbSaveSwap(req);
     showToast('Solicitação de troca recusada/cancelada.');
     renderSwapRequests();
     return;
@@ -3020,6 +3202,7 @@ function respondSwap(id, accept) {
 
 function executeSwap(req) {
   req.status = 'accepted';
+  dbSaveSwap(req);
   // Swap in occupied map
   const nameA = occupied.get(req.fromSeat);
   const nameB = occupied.get(req.toSeat);
@@ -3032,6 +3215,12 @@ function executeSwap(req) {
       if (parseInt(p.seat) === req.fromSeat) p.seat = String(req.toSeat);
       else if (parseInt(p.seat) === req.toSeat) p.seat = String(req.fromSeat);
     });
+  });
+  // Persiste a troca nos tickets do banco
+  allPassagens.forEach(p => {
+    if (p.cancelled) return;
+    if (parseInt(p.seat) === req.toSeat && p.cpf === req.fromCpf) dbPatchTicket(p.code, { seat: String(req.toSeat) });
+    else if (parseInt(p.seat) === req.fromSeat && p.cpf === req.toCpf) dbPatchTicket(p.code, { seat: String(req.fromSeat) });
   });
   buildCabin();
   renderSwapRequests();
@@ -3269,6 +3458,7 @@ function toggleMonitorPresence() {
   const seatNum = currentUser.seat;
   const k = monKey(currentUser.busId, seatNum);
   monitorSeatActive[k] = !monitorSeatActive[k];
+  dbSavePresence(k, monitorSeatActive[k]);
   rebuildMonitorSeats(currentBusContext());
   if (!monitorSeatActive[k]) {
     // Poltrona liberada — reservável na linha deste monitor
@@ -3381,6 +3571,7 @@ function processMonitorScan(raw) {
       if (apIdx >= 0) { allPassagens[apIdx].boardedAt = boardedNow; }
       const pIdx = passagens.findIndex(p => p.code === data.code);
       if (pIdx >= 0) { passagens[pIdx].boardedAt = boardedNow; }
+      dbPatchTicket(data.code, { boarded_at: boardedNow });
       // Retroalimenta o histórico do passageiro (embarque concluído)
       const ownerCpf = data.cpf || (apIdx >= 0 ? allPassagens[apIdx].cpf : null);
       if (ownerCpf) recordHistory(ownerCpf, { code: data.code, date: boardedNow, seat: data.seat, local: data.local, bus: data.busName || data.bus, status: 'done' });
@@ -3511,6 +3702,7 @@ function createUser() {
 
   USERS[cpf] = newUser;
   persistUsers();
+  dbSaveUser(newUser);
   rebuildMonitorSeats();
 
   // Limpa o formulário
@@ -3531,6 +3723,7 @@ function deleteUser(cpf) {
   if (!window.confirm(`Excluir o usuário ${u.name}? Esta ação não pode ser desfeita.`)) return;
   delete USERS[cpf];
   persistUsers();
+  dbDeleteUser(cpf);
   rebuildMonitorSeats();
   if (document.getElementById('cabin') && document.getElementById('cabin').children.length) buildCabin();
   renderUsersMgmt();
@@ -3583,6 +3776,7 @@ function processUserRows(rows) {
       if (!assigned) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): sem poltrona livre para monitor em nenhuma linha`); return; }
     }
     USERS[cpf] = u; // registra antes do próximo cálculo de poltrona livre
+    dbSaveUser(u);
     created.push(name.split(' ')[0] + ' (' + cpf + ')');
   });
   if (created.length) { persistUsers(); rebuildMonitorSeats(); }
@@ -3683,6 +3877,7 @@ function importUsersBackup(input) {
               })()
             : { priority: normalizePriority(u.priority) })
         };
+        dbSaveUser(USERS[cpf]);
         created.push(u.name.split(' ')[0]);
       });
       if (created.length) { persistUsers(); rebuildMonitorSeats(); }
@@ -3773,6 +3968,8 @@ function saveEditUser() {
   USERS[newCpf] = updated;
 
   persistUsers();
+  if (newCpf !== editingCpf) dbDeleteUser(editingCpf);
+  dbSaveUser(updated);
   rebuildMonitorSeats(currentBusContext());
   if (document.getElementById('cabin') && document.getElementById('cabin').children.length) buildCabin();
   closeEditUser();
