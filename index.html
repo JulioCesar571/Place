@@ -948,23 +948,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
     </div>
     <div class="field-group">
       <label class="field-label">Local de Embarque</label>
-      <div class="embarque-options">
-        <div class="embarque-opt" onclick="selectEmbarque(this,'Pampa Hotel')" data-local="Pampa Hotel">
-          <div class="opt-radio"></div>
-          <div class="opt-icon">🏨</div>
-          <div><div class="opt-name">Pampa Hotel</div><div class="opt-addr">Av. Júlio de Castilhos, 3500</div></div>
-        </div>
-        <div class="embarque-opt" onclick="selectEmbarque(this,'Igreja de Fátima')" data-local="Igreja de Fátima">
-          <div class="opt-radio"></div>
-          <div class="opt-icon">⛪</div>
-          <div><div class="opt-name">Igreja de Fátima</div><div class="opt-addr">R. Nossa Sra. de Fátima, 210</div></div>
-        </div>
-        <div class="embarque-opt" onclick="selectEmbarque(this,'CTG Porteira do Rio Grande')" data-local="CTG Porteira do Rio Grande">
-          <div class="opt-radio"></div>
-          <div class="opt-icon">🤠</div>
-          <div><div class="opt-name">CTG Porteira do Rio Grande</div><div class="opt-addr">Estrada do Rodeio, s/n</div></div>
-        </div>
-      </div>
+      <div class="embarque-options" id="embarque-options"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
@@ -1242,21 +1226,29 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 
     <!-- ADMIN TABS -->
     <div class="admin-tabs">
-      <button class="nav-btn active" id="adm-tab-1" onclick="switchAdminTab('relacao')">
+      <button class="nav-btn active" id="adm-tab-relacao" onclick="switchAdminTab('relacao')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-8H9V9h6v2z"/></svg>
         Relação de Passageiros
       </button>
-      <button class="nav-btn" id="adm-tab-2" onclick="switchAdminTab('ocupacao')">
+      <button class="nav-btn" id="adm-tab-ocupacao" onclick="switchAdminTab('ocupacao')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 13h2v7H3v-7zm4-5h2v12H7V8zm4-4h2v16h-2V4zm4 7h2v9h-2v-9zm4-3h2v12h-2V8z"/></svg>
         Painel de Ocupação
       </button>
-      <button class="nav-btn" id="adm-tab-4" onclick="switchAdminTab('resumos')">
+      <button class="nav-btn" id="adm-tab-dashboard" onclick="switchAdminTab('dashboard')">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M13 3v18h8V3h-8zM3 21h8v-8H3v8zm0-10h8V3H3v8z"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" id="adm-tab-resumos" onclick="switchAdminTab('resumos')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 12h8v2H8v-2zm0 4h8v2H8v-2z"/></svg>
         Resumos de Viagem
       </button>
-      <button class="nav-btn" id="adm-tab-3" onclick="switchAdminTab('usuarios')">
+      <button class="nav-btn" id="adm-tab-usuarios" onclick="switchAdminTab('usuarios')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
         Gestão de Usuários
+      </button>
+      <button class="nav-btn" id="adm-tab-linhas" onclick="switchAdminTab('linhas')">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z"/></svg>
+        Linhas &amp; Pontos
       </button>
     </div>
 
@@ -1370,6 +1362,59 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
           </div>
         </div>
         <div id="occupancy-charts"></div>
+      </div>
+    </div>
+
+    <!-- TAB: DASHBOARD EXECUTIVO -->
+    <div class="admin-tab-panel" id="adm-panel-dashboard">
+      <div class="admin-card">
+        <div class="admin-card-title">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3v18h8V3h-8zM3 21h8v-8H3v8zm0-10h8V3H3v8z"/></svg>
+          Dashboard Executivo Mensal
+        </div>
+        <div id="dashboard-content"><div class="admin-empty">Carregando...</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: LINHAS & PONTOS -->
+    <div class="admin-tab-panel" id="adm-panel-linhas">
+      <div class="admin-card">
+        <div class="admin-card-title">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z"/></svg>
+          Linhas de Ônibus
+        </div>
+        <div class="create-user-grid">
+          <div class="cu-field"><label class="cu-label">Código da linha</label><input class="cu-input" id="bus-id" placeholder="Ex: 4210" maxlength="10"></div>
+          <div class="cu-field"><label class="cu-label">Nome exibido</label><input class="cu-input" id="bus-name" placeholder="Ex: 4210 Roberto" maxlength="40"></div>
+          <div class="cu-field"><label class="cu-label">Motorista</label><input class="cu-input" id="bus-driver" placeholder="Nome do motorista" maxlength="40"></div>
+          <div class="cu-field"><label class="cu-label">Descrição / horário</label><input class="cu-input" id="bus-descr" placeholder="Ex: Linha Roberto — saída às 07h00" maxlength="80"></div>
+        </div>
+        <button class="btn-create-user" id="bus-save-btn" onclick="saveBus()">➕ Adicionar linha</button>
+        <div class="cu-error" id="bus-error"></div>
+        <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--c2);margin-top:16px;">
+          <table class="user-mgmt-table"><thead><tr><th>Código</th><th>Nome</th><th>Motorista</th><th>Descrição</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="buses-tbody"></tbody></table>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+          Pontos de Embarque
+        </div>
+        <div class="create-user-grid">
+          <div class="cu-field"><label class="cu-label">Nome do ponto</label><input class="cu-input" id="pt-name" placeholder="Ex: Praça Central" maxlength="50"></div>
+          <div class="cu-field"><label class="cu-label">Endereço</label><input class="cu-input" id="pt-addr" placeholder="Ex: Av. Brasil, 100" maxlength="60"></div>
+          <div class="cu-field"><label class="cu-label">Horário do embarque</label><input class="cu-input" id="pt-time" type="time" value="16:40"></div>
+          <div class="cu-field"><label class="cu-label">Ícone (emoji)</label><input class="cu-input" id="pt-icon" placeholder="📍" maxlength="4"></div>
+        </div>
+        <button class="btn-create-user" id="pt-save-btn" onclick="savePoint()">➕ Adicionar ponto</button>
+        <div class="cu-error" id="pt-error"></div>
+        <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--c2);margin-top:16px;">
+          <table class="user-mgmt-table"><thead><tr><th>Ponto</th><th>Endereço</th><th>Horário</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="points-tbody"></tbody></table>
+        </div>
+        <div class="bulk-hint" style="margin-top:12px;">O horário do ponto define o prazo de cancelamento (4h antes) e a marcação automática de ausência (1h depois).</div>
       </div>
     </div>
 
@@ -1679,13 +1724,27 @@ async function dbRefresh() {
   if (dbRefreshBusy) return;
   dbRefreshBusy = true;
   try {
-    const [usersRows, ticketRows, waitRows, swapRows, presRows] = await Promise.all([
+    const [usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows] = await Promise.all([
       sb('/users?select=*'),
       sb('/tickets?select=*&order=created_at.desc&limit=2000'),
       sb('/waitlist?select=*&order=joined_at.asc'),
       sb("/swaps?select=*&status=eq.pending"),
       sb('/monitor_presence?select=*'),
+      sb('/buses?select=*&order=id.asc').catch(() => []),
+      sb('/points?select=*&order=h.asc,m.asc').catch(() => []),
     ]);
+
+    // LINHAS e PONTOS geridos pelo admin (fallback: valores fixos se tabelas vazias)
+    if (busRows && busRows.length) {
+      BUSES.length = 0;
+      busRows.filter(b => b.active !== false).forEach(b =>
+        BUSES.push({ id: b.id, name: b.name, icon: b.icon || '🚌', desc: b.descr || '', driver: b.driver || '' }));
+    }
+    if (pointRows && pointRows.length) {
+      POINTS.length = 0;
+      pointRows.forEach(p => POINTS.push({ name: p.name, addr: p.addr, icon: p.icon, h: p.h, m: p.m, active: p.active }));
+    }
+    populateBusSelects();
 
     // USUÁRIOS
     Object.keys(USERS).forEach(cpf => delete USERS[cpf]);
@@ -2261,11 +2320,17 @@ function checkBookingWindow() {
 }
 
 // ---- CANCELLATION ----
-const BOARDING_TIMES = {
-  'Pampa Hotel':               { h:16, m:40 },
-  'Igreja de Fátima':          { h:16, m:50 },
-  'CTG Porteira do Rio Grande':{ h:16, m:55 },
-};
+// Pontos de embarque — carregados do banco (gestão pelo admin); estes são o fallback
+const POINTS = [
+  { name:'Pampa Hotel',                addr:'Av. Júlio de Castilhos, 3500', icon:'🏨', h:16, m:40, active:true },
+  { name:'Igreja de Fátima',           addr:'R. Nossa Sra. de Fátima, 210', icon:'⛪', h:16, m:50, active:true },
+  { name:'CTG Porteira do Rio Grande', addr:'Estrada do Rodeio, s/n',       icon:'🤠', h:16, m:55, active:true },
+];
+function getBoardingTime(local) {
+  const p = POINTS.find(x => x.name === cleanLocal(local));
+  return p ? { h: p.h, m: p.m } : { h:16, m:40 };
+}
+const BOARDING_TIMES = new Proxy({}, { get: (_, local) => getBoardingTime(String(local)) });
 const CANCEL_DAYS = [1,2,3,4]; // Mon=1 ... Thu=4
 let cancelTicketIdx = null;
 let cancelReason = null;
@@ -2633,6 +2698,17 @@ function buildCabin() {
 }
 
 // ---- MODAL ----
+function renderEmbarqueOptions() {
+  const wrap = document.getElementById('embarque-options');
+  if (!wrap) return;
+  wrap.innerHTML = POINTS.filter(p => p.active !== false).map(p => `
+    <div class="embarque-opt" onclick="selectEmbarque(this,'${p.name.replace(/'/g, "\\'")}')" data-local="${p.name}">
+      <div class="opt-radio"></div>
+      <div class="opt-icon">${p.icon || '📍'}</div>
+      <div><div class="opt-name">${p.name}</div><div class="opt-addr">${p.addr || ''} · ${String(p.h).padStart(2,'0')}h${String(p.m).padStart(2,'0')}</div></div>
+    </div>`).join('');
+}
+
 function openModal(num, el) {
   currentSeat = num; currentLocal = null;
   document.getElementById('modal-seat-num').textContent = num;
@@ -2644,6 +2720,7 @@ function openModal(num, el) {
     document.querySelectorAll('.embarque-opt').forEach(o => { if(o.dataset.local===currentLocal) o.classList.add('active'); });
     document.getElementById('btn-ok').disabled = false;
   }
+  renderEmbarqueOptions();
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentSeat=null; currentLocal=null; }
@@ -3079,22 +3156,20 @@ function renderOccupancyCharts() {
   const occPeriod = (document.getElementById('occ-period-filter') || {}).value || 'today';
   const occBus    = (document.getElementById('occ-bus-filter') || {}).value || '';
 
-  // Demo weekly data + live today
-  const todayOcc = occupied.size;
-  const weekData = [
-    { label: 'Segunda', val: 38 },
-    { label: 'Terça',   val: 41 },
-    { label: 'Quarta',  val: 35 },
-    { label: 'Quinta',  val: 43 },
-    { label: 'Hoje',    val: todayOcc },
-  ];
-  const busData = [
-    { label: '7515 Valter',   val: 42 },
-    { label: '8313 Romualdo', val: 31 },
-    { label: '6515 Uniplac',  val: 44 },
-    { label: '2092 Misto',    val: 22 },
-    { label: '2074 Elias',    val: 36 },
-  ];
+  // Dados REAIS calculados das passagens do banco (respeitam os filtros abaixo)
+  const dayNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  const weekCounts = {};
+  const busCounts = {};
+  allPassagens.forEach(t => {
+    if (t.cancelled) return;
+    const d = parseTicketDate(t.reservedAt || t.date);
+    if (!d) return;
+    weekCounts[d.getDay()] = (weekCounts[d.getDay()] || 0) + 1;
+    if (t.busId) busCounts[t.busId] = (busCounts[t.busId] || 0) + 1;
+  });
+  const weekData = [1,2,3,4,5,6,0].filter(d => weekCounts[d]).map(d => ({ label: dayNames[d], val: weekCounts[d] }));
+  if (!weekData.length) weekData.push({ label: 'Sem dados', val: 0 });
+  const busData = BUSES.map(b => ({ label: b.name, val: busCounts[b.id] || 0 }));
   const pointCounts = { 'Pampa Hotel': 0, 'Igreja de Fátima': 0, 'CTG Porteira do Rio Grande': 0 };
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3136,10 +3211,11 @@ function renderOccupancyCharts() {
       <div class="chart-title">🚌 Ocupação por linha ${occBus ? '<span class="filter-active-chip">filtro: ' + (BUSES.find(b=>b.id===occBus)||{}).name + '</span>' : ''}</div>
       ${bars(occBus ? busData.filter(b => b.label.startsWith(occBus)) : busData, maxSeat)}
     </div>
-    <div class="chart-section" style="margin-bottom:0;">
+    <div class="chart-section">
       <div class="chart-title">📍 Reservas por ponto de embarque (${occPeriod === 'today' ? 'hoje' : occPeriod === '7d' ? 'últimos 7 dias' : occPeriod === '30d' ? 'últimos 30 dias' : occDateVal ? new Date(occDateVal+'T12:00:00').toLocaleDateString('pt-BR') : 'selecione uma data'})</div>
       ${bars(pointData, maxPoint)}
-    </div>`;
+    </div>
+    ${heatmapHtml(occPeriod, occBus, periodStart, periodEnd)}`;
 }
 
 // ══════════════ 7. TROCA DE POLTRONA ══════════════
@@ -4073,6 +4149,306 @@ function switchUserTab(tab) {
 }
 
 
+
+// ---- GESTÃO DE LINHAS & PONTOS ----
+let editingBusId = null, editingPointName = null;
+
+function dbSaveBusRow(b)   { return sb('/buses', { method:'POST', prefer:'resolution=merge-duplicates', body: JSON.stringify([b]) }).catch(dbErr); }
+function dbDeleteBus(id)   { return sb('/buses?id=eq.' + encodeURIComponent(id), { method:'DELETE' }).catch(dbErr); }
+function dbSavePointRow(p) { return sb('/points', { method:'POST', prefer:'resolution=merge-duplicates', body: JSON.stringify([p]) }).catch(dbErr); }
+function dbDeletePoint(nm) { return sb('/points?name=eq.' + encodeURIComponent(nm), { method:'DELETE' }).catch(dbErr); }
+
+function renderLinhasPontos() {
+  // Tabela de linhas
+  const bt = document.getElementById('buses-tbody');
+  if (bt) bt.innerHTML = BUSES.map(b => `
+    <tr>
+      <td style="font-family:monospace;font-weight:700;">${b.id}</td>
+      <td>${b.icon || '🚌'} ${b.name}</td>
+      <td>${b.driver || '—'}</td>
+      <td style="font-size:12px;color:var(--c5);">${b.desc || '—'}</td>
+      <td><span class="priority-badge ${b.inactive ? 'pb-blocked' : 'pb-p2'}">${b.inactive ? 'Desativada' : 'Ativa'}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn-edit-user" onclick="editBus('${b.id}')">✏️</button>
+        <button class="btn-edit-user" onclick="toggleBus('${b.id}')">${b.inactive ? '▶️ Ativar' : '⏸️ Desativar'}</button>
+        <button class="btn-delete-user" onclick="removeBus('${b.id}')">🗑️</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--c5);">Nenhuma linha cadastrada</td></tr>';
+
+  // Tabela de pontos
+  const pt = document.getElementById('points-tbody');
+  if (pt) pt.innerHTML = POINTS.map(p => `
+    <tr>
+      <td>${p.icon || '📍'} ${p.name}</td>
+      <td style="font-size:12px;color:var(--c5);">${p.addr || '—'}</td>
+      <td style="font-family:monospace;">${String(p.h).padStart(2,'0')}:${String(p.m).padStart(2,'0')}</td>
+      <td><span class="priority-badge ${p.active === false ? 'pb-blocked' : 'pb-p2'}">${p.active === false ? 'Desativado' : 'Ativo'}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn-edit-user" onclick="editPoint('${p.name.replace(/'/g, "\\'")}')">✏️</button>
+        <button class="btn-edit-user" onclick="togglePoint('${p.name.replace(/'/g, "\\'")}')">${p.active === false ? '▶️' : '⏸️'}</button>
+        <button class="btn-delete-user" onclick="removePoint('${p.name.replace(/'/g, "\\'")}')">🗑️</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--c5);">Nenhum ponto cadastrado</td></tr>';
+}
+
+function busShowError(msg) { const el = document.getElementById('bus-error'); el.textContent = '⚠️ ' + msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 4000); }
+function ptShowError(msg)  { const el = document.getElementById('pt-error');  el.textContent = '⚠️ ' + msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 4000); }
+
+function saveBus() {
+  const id = document.getElementById('bus-id').value.trim();
+  const name = document.getElementById('bus-name').value.trim();
+  const driver = document.getElementById('bus-driver').value.trim();
+  const descr = document.getElementById('bus-descr').value.trim();
+  if (!id || !name) { busShowError('Código e nome são obrigatórios.'); return; }
+  if (!editingBusId && BUSES.some(b => b.id === id)) { busShowError('Já existe uma linha com este código.'); return; }
+
+  const idx = BUSES.findIndex(b => b.id === (editingBusId || id));
+  const entry = { id, name, icon: '🚌', desc: descr, driver, inactive: idx >= 0 ? BUSES[idx].inactive : false };
+  if (editingBusId && editingBusId !== id) { // código alterado: remove antigo
+    const oldIdx = BUSES.findIndex(b => b.id === editingBusId);
+    if (oldIdx >= 0) BUSES.splice(oldIdx, 1);
+    dbDeleteBus(editingBusId);
+    BUSES.push(entry);
+  } else if (idx >= 0) BUSES[idx] = entry;
+  else BUSES.push(entry);
+
+  dbSaveBusRow({ id, name, icon:'🚌', descr, driver, active: !entry.inactive });
+  editingBusId = null;
+  document.getElementById('bus-save-btn').textContent = '➕ Adicionar linha';
+  ['bus-id','bus-name','bus-driver','bus-descr'].forEach(i => document.getElementById(i).value = '');
+  populateBusSelects();
+  renderLinhasPontos();
+  showToast(`✅ Linha ${name} salva.`);
+}
+
+function editBus(id) {
+  const b = BUSES.find(x => x.id === id);
+  if (!b) return;
+  editingBusId = id;
+  document.getElementById('bus-id').value = b.id;
+  document.getElementById('bus-name').value = b.name;
+  document.getElementById('bus-driver').value = b.driver || '';
+  document.getElementById('bus-descr').value = b.desc || '';
+  document.getElementById('bus-save-btn').textContent = '💾 Salvar alterações';
+  document.getElementById('bus-id').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function toggleBus(id) {
+  const b = BUSES.find(x => x.id === id);
+  if (!b) return;
+  b.inactive = !b.inactive;
+  dbSaveBusRow({ id: b.id, name: b.name, icon: b.icon, descr: b.desc, driver: b.driver, active: !b.inactive });
+  populateBusSelects();
+  renderLinhasPontos();
+  showToast(b.inactive ? `⏸️ Linha ${b.name} desativada — some das opções de reserva.` : `▶️ Linha ${b.name} reativada.`);
+}
+
+function removeBus(id) {
+  const b = BUSES.find(x => x.id === id);
+  if (!b) return;
+  const hasMonitor = Object.values(USERS).some(u => u.role === 'monitor' && u.busId === id);
+  if (hasMonitor) { showToast('⚠️ Há monitores vinculados a esta linha. Realoque-os antes de excluir.'); return; }
+  if (!window.confirm(`Excluir a linha ${b.name}? Passagens antigas dela permanecem nos relatórios.`)) return;
+  BUSES.splice(BUSES.findIndex(x => x.id === id), 1);
+  dbDeleteBus(id);
+  populateBusSelects();
+  renderLinhasPontos();
+  showToast(`🗑️ Linha ${b.name} excluída.`);
+}
+
+function savePoint() {
+  const name = document.getElementById('pt-name').value.trim();
+  const addr = document.getElementById('pt-addr').value.trim();
+  const time = document.getElementById('pt-time').value;
+  const icon = document.getElementById('pt-icon').value.trim() || '📍';
+  if (!name || !time) { ptShowError('Nome e horário são obrigatórios.'); return; }
+  if (!editingPointName && POINTS.some(p => p.name === name)) { ptShowError('Já existe um ponto com este nome.'); return; }
+  const [h, m] = time.split(':').map(Number);
+
+  const idx = POINTS.findIndex(p => p.name === (editingPointName || name));
+  const entry = { name, addr, icon, h, m, active: idx >= 0 ? POINTS[idx].active !== false : true };
+  if (editingPointName && editingPointName !== name) {
+    const oldIdx = POINTS.findIndex(p => p.name === editingPointName);
+    if (oldIdx >= 0) POINTS.splice(oldIdx, 1);
+    dbDeletePoint(editingPointName);
+    POINTS.push(entry);
+  } else if (idx >= 0) POINTS[idx] = entry;
+  else POINTS.push(entry);
+
+  dbSavePointRow({ name, addr, icon, h, m, active: entry.active });
+  editingPointName = null;
+  document.getElementById('pt-save-btn').textContent = '➕ Adicionar ponto';
+  document.getElementById('pt-name').value = ''; document.getElementById('pt-addr').value = '';
+  document.getElementById('pt-icon').value = ''; document.getElementById('pt-time').value = '16:40';
+  renderLinhasPontos();
+  showToast(`✅ Ponto ${name} salvo.`);
+}
+
+function editPoint(name) {
+  const p = POINTS.find(x => x.name === name);
+  if (!p) return;
+  editingPointName = name;
+  document.getElementById('pt-name').value = p.name;
+  document.getElementById('pt-addr').value = p.addr || '';
+  document.getElementById('pt-time').value = String(p.h).padStart(2,'0') + ':' + String(p.m).padStart(2,'0');
+  document.getElementById('pt-icon').value = p.icon || '';
+  document.getElementById('pt-save-btn').textContent = '💾 Salvar alterações';
+  document.getElementById('pt-name').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function togglePoint(name) {
+  const p = POINTS.find(x => x.name === name);
+  if (!p) return;
+  p.active = p.active === false ? true : false;
+  dbSavePointRow({ name: p.name, addr: p.addr, icon: p.icon, h: p.h, m: p.m, active: p.active });
+  renderLinhasPontos();
+  showToast(p.active ? `▶️ Ponto ${p.name} reativado.` : `⏸️ Ponto ${p.name} desativado.`);
+}
+
+function removePoint(name) {
+  if (POINTS.filter(p => p.active !== false).length <= 1) { showToast('⚠️ Mantenha ao menos um ponto de embarque ativo.'); return; }
+  if (!window.confirm(`Excluir o ponto ${name}?`)) return;
+  POINTS.splice(POINTS.findIndex(p => p.name === name), 1);
+  dbDeletePoint(name);
+  renderLinhasPontos();
+  showToast(`🗑️ Ponto ${name} excluído.`);
+}
+
+// ---- DASHBOARD EXECUTIVO ----
+function renderDashboard() {
+  const el = document.getElementById('dashboard-content');
+  if (!el) return;
+
+  const now = new Date();
+  const monthsBack = 6;
+  const buckets = {}; // 'YYYY-MM' -> {total, boarded, absent, cancelled, days:Set}
+  for (let i = 0; i < monthsBack; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    buckets[d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')] = { total:0, boarded:0, absent:0, cancelled:0, days:new Set() };
+  }
+  const absentByUser = {};
+
+  allPassagens.forEach(t => {
+    const d = parseTicketDate(t.reservedAt || t.date);
+    if (!d) return;
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const b = buckets[key];
+    if (!b) return;
+    b.total++;
+    b.days.add(d.toLocaleDateString('pt-BR'));
+    if (t.cancelled) { b.cancelled++; return; }
+    if (t.boardedAt) b.boarded++;
+    else if (isBoardingPast(t) || d < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+      b.absent++;
+      const label = t.passenger + '|' + t.cpf;
+      absentByUser[label] = (absentByUser[label] || 0) + 1;
+    }
+  });
+
+  const keys = Object.keys(buckets).sort(); // asc
+  const cur = buckets[keys[keys.length-1]];
+  const prev = buckets[keys[keys.length-2]] || { total:0, boarded:0, absent:0 };
+  const occRate = b => b.days.size ? Math.round((b.total / (b.days.size * 44)) * 100) : 0;
+  const absRate = b => b.total - b.cancelled > 0 ? Math.round((b.absent / (b.total - b.cancelled)) * 100) : 0;
+  const delta = (a, b) => b === 0 ? (a > 0 ? '+100%' : '0%') : ((a-b)/b*100 >= 0 ? '+' : '') + Math.round((a-b)/b*100) + '%';
+
+  const ranking = Object.entries(absentByUser).sort((a,b) => b[1]-a[1]).slice(0, 8);
+  const maxTotal = Math.max(1, ...keys.map(k => buckets[k].total));
+
+  el.innerHTML = `
+    <div class="stats-grid" style="margin-bottom:20px;">
+      <div class="adm-stat hl"><div class="adm-stat-num">${occRate(cur)}%</div><div class="adm-stat-label">Ocupação média (mês atual)</div></div>
+      <div class="adm-stat" style="background:#fff0f0;border-color:#e24b4a;"><div class="adm-stat-num" style="color:#922b21;">${absRate(cur)}%</div><div class="adm-stat-label">Taxa de ausência</div></div>
+      <div class="adm-stat"><div class="adm-stat-num">${cur.total}</div><div class="adm-stat-label">Reservas no mês (${delta(cur.total, prev.total)} vs anterior)</div></div>
+      <div class="adm-stat" style="background:linear-gradient(135deg,#E8F5F3,#B2D9D0);border-color:var(--c4);"><div class="adm-stat-num" style="color:#0F6E56;">${cur.boarded}</div><div class="adm-stat-label">Embarques no mês</div></div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-title">📈 Comparativo entre meses — reservas</div>
+      ${keys.map(k => {
+        const b = buckets[k];
+        const pct = Math.max(6, Math.round((b.total / maxTotal) * 100));
+        return `<div class="bar-row">
+          <div class="bar-label">${monthLabelOf(k)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"><span class="bar-val">${b.total}</span></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-title">📉 Taxa de ausência por mês</div>
+      ${keys.map(k => {
+        const r = absRate(buckets[k]);
+        return `<div class="bar-row">
+          <div class="bar-label">${monthLabelOf(k)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, r)}%;background:linear-gradient(90deg,#e24b4a,#922b21);"><span class="bar-val">${r}%</span></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="chart-section" style="margin-bottom:0;">
+      <div class="chart-title">🏆 Ranking de faltosos (últimos ${monthsBack} meses)</div>
+      ${ranking.length === 0 ? '<div style="font-size:13px;color:var(--c5);padding:8px;">Nenhuma ausência registrada no período. 🎉</div>'
+        : ranking.map(([label, count], i) => {
+          const [nm, cpf] = label.split('|');
+          return `<div class="hist-item" style="padding:10px 14px;margin-bottom:6px;">
+            <div class="hist-item-left">
+              <div class="hist-item-icon hi-absent" style="width:30px;height:30px;font-size:13px;">${i+1}º</div>
+              <div><div class="hist-item-title" style="font-size:13px;">${nm}</div><div class="hist-item-sub" style="font-size:11px;">${cpf}</div></div>
+            </div>
+            <span class="hist-item-badge hb-absent">${count} falta${count>1?'s':''}</span>
+          </div>`;
+        }).join('')}
+    </div>`;
+}
+
+// ---- MAPA DE CALOR DE POLTRONAS ----
+function heatmapHtml(occPeriod, occBus, periodStart, periodEnd) {
+  const counts = {};
+  let max = 0;
+  allPassagens.forEach(t => {
+    if (t.cancelled) return;
+    if (occBus && t.busId !== occBus) return;
+    const d = parseTicketDate(t.reservedAt || t.date);
+    if (d && d < periodStart) return;
+    if (periodEnd && d && d > periodEnd) return;
+    String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => {
+      counts[n] = (counts[n] || 0) + 1;
+      if (counts[n] > max) max = counts[n];
+    });
+  });
+
+  const heatColor = n => {
+    const c = counts[n] || 0;
+    if (!max || c === 0) return 'background:#e3efec;color:#9ab5b2;';
+    const ratio = c / max;
+    if (ratio <= 0.33) return 'background:#7EC8BC;color:#174F49;';
+    if (ratio <= 0.66) return 'background:#D4A017;color:#fff;';
+    return 'background:#e24b4a;color:#fff;';
+  };
+
+  let grid = '<div class="mosaic">';
+  for (let row = 0; row < 11; row++) {
+    const base = row * 4;
+    [base+1, base+2].forEach(n => { grid += `<div class="mosaic-seat" style="${heatColor(n)}" title="Poltrona ${n}: ${counts[n]||0} reserva(s)">${n}</div>`; });
+    grid += '<div class="ms-aisle"></div>';
+    [base+3, base+4].forEach(n => { grid += `<div class="mosaic-seat" style="${heatColor(n)}" title="Poltrona ${n}: ${counts[n]||0} reserva(s)">${n}</div>`; });
+  }
+  [45,46].forEach(n => { grid += `<div class="mosaic-seat" style="${heatColor(n)}" title="Poltrona ${n}: ${counts[n]||0} reserva(s)">${n}</div>`; });
+  grid += '<div class="ms-aisle"></div><div class="mosaic-seat ms-free" style="grid-column:span 2;width:auto;font-size:8px;">WC</div></div>';
+
+  return `<div class="chart-section" style="margin-bottom:0;">
+    <div class="chart-title">🔥 Mapa de calor — poltronas mais disputadas</div>
+    ${grid}
+    <div class="mosaic-legend">
+      <span><i style="background:#e3efec"></i>Sem reservas</span>
+      <span><i style="background:#7EC8BC"></i>Baixa</span>
+      <span><i style="background:#D4A017"></i>Média</span>
+      <span><i style="background:#e24b4a"></i>Alta (máx: ${max})</span>
+    </div>
+  </div>`;
+}
+
 // ---- RESUMO PÓS-VIAGEM ----
 function dbInsertTripReport(r) {
   return sb('/trip_reports', { method: 'POST', body: JSON.stringify([r]) }).catch(dbErr);
@@ -4176,19 +4552,37 @@ async function loadTripReports() {
   }
 }
 
+
+// Popula todos os <select> de ônibus a partir de BUSES (gestão dinâmica)
+function populateBusSelects() {
+  const opts = BUSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  [['adm-bus-filter','<option value="">Todas as linhas</option>'],
+   ['occ-bus-filter','<option value="">Todas as linhas</option>'],
+   ['cu-bus',''],
+   ['eu-bus','']].forEach(([id, first]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = first + opts;
+    if ([...el.options].some(o => o.value === prev)) el.value = prev;
+  });
+}
+
 // ---- ADMIN TABS ----
 function switchAdminTab(tab) {
-  const map = { relacao: 1, ocupacao: 2, usuarios: 3, resumos: 4 };
-  ['relacao','ocupacao','usuarios','resumos'].forEach(t => {
+  const tabs = ['relacao','ocupacao','dashboard','resumos','usuarios','linhas'];
+  tabs.forEach(t => {
     const panel = document.getElementById('adm-panel-' + t);
     if (panel) panel.classList.toggle('active', t === tab);
-    const btn = document.getElementById('adm-tab-' + map[t]);
+    const btn = document.getElementById('adm-tab-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'relacao') renderAdminTable();
   if (tab === 'ocupacao') renderOccupancyCharts();
+  if (tab === 'dashboard') renderDashboard();
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
+  if (tab === 'linhas') renderLinhasPontos();
 }
 
 function onOccPeriodChange() {
@@ -4309,12 +4703,7 @@ function renderAdminTable() {
 }
 
 function isBoardingPast(t) {
-  const BOARDING = {
-    'Pampa Hotel':               { h:16, m:40 },
-    'Igreja de Fátima':          { h:16, m:50 },
-    'CTG Porteira do Rio Grande':{ h:16, m:55 },
-  };
-  const bt = BOARDING[cleanLocal(t.local)];
+  const bt = getBoardingTime(t.local);
   if (!bt) return false;
   const now = new Date();
   const absentTime = new Date(now);
