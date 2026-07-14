@@ -1162,7 +1162,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 <div id="screen-week" class="screen">
   <div class="week-card">
     <div class="week-title">📅 Quais dias você vai viajar?</div>
-    <div class="week-sub">Selecione os dias da <strong>próxima semana</strong> em que usará o ônibus.<br>A associação usa essas reservas para solicitar os veículos às empresas com antecedência.</div>
+    <div class="week-sub" id="week-sub">Selecione os dias em que usará o ônibus.<br>O calendário abre <strong>todo sábado</strong> para a semana seguinte — a associação usa essas reservas para solicitar os veículos às empresas.</div>
     <div class="week-grid" id="week-grid"></div>
     <div class="week-selected-info" id="week-info">Nenhum dia selecionado</div>
     <button class="btn-week-continue" id="btn-week-continue" disabled onclick="confirmWeekDays()">Escolher poltrona →</button>
@@ -3449,14 +3449,29 @@ let selectedTravelDays = []; // ['dd/mm/yyyy', ...]
 
 function fmtDay(d) { return d.toLocaleDateString('pt-BR'); }
 
-function getWeekDays() {
-  // Próximos 7 dias a partir de amanhã
-  const days = [];
+// Semana de reservas: SEGUNDA a DOMINGO, aberta todo SÁBADO para a semana seguinte.
+// A cada sábado o calendário "vira" automaticamente para a nova semana.
+function getBookingWeekMonday() {
   const now = new Date();
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-    // Dia trava quando passa das 18h da véspera
-    const cutoff = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1, WEEK_CUTOFF_HOUR, 0, 0);
+  const anchor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sinceSaturday = (anchor.getDay() - 6 + 7) % 7; // dias desde o último sábado
+  anchor.setDate(anchor.getDate() - sinceSaturday);     // sábado mais recente (âncora)
+  const monday = new Date(anchor);
+  monday.setDate(anchor.getDate() + 2);                 // segunda-feira da semana aberta
+  return monday;
+}
+
+function getWeekDays() {
+  const now = new Date();
+  const monday = getBookingWeekMonday();
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    // Cada dia trava individualmente na véspera às WEEK_CUTOFF_HOUR
+    const cutoff = new Date(d);
+    cutoff.setDate(d.getDate() - 1);
+    cutoff.setHours(WEEK_CUTOFF_HOUR, 0, 0, 0);
     days.push({ date: d, str: fmtDay(d), locked: now > cutoff });
   }
   return days;
@@ -3473,6 +3488,11 @@ function showWeekScreen() {
 function renderWeekGrid() {
   const grid = document.getElementById('week-grid');
   const days = getWeekDays();
+  // Intervalo exibido (Seg → Dom)
+  const sub = document.getElementById('week-sub');
+  if (sub && days.length) {
+    sub.innerHTML = `Semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong> — o calendário renova <strong>todo sábado</strong> para a semana seguinte.<br>A associação usa essas reservas para solicitar os veículos às empresas.`;
+  }
   // Remove seleções de dias que travaram nesse meio-tempo
   selectedTravelDays = selectedTravelDays.filter(s => days.some(d => d.str === s && !d.locked));
 
