@@ -436,6 +436,31 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 .mosaic-legend span{display:inline-flex;align-items:center;gap:5px;}
 .mosaic-legend i{width:12px;height:12px;border-radius:3px;display:inline-block;}
 
+
+/* ===== CALENDÁRIO SEMANAL ===== */
+#screen-week{align-items:center;justify-content:center;padding:2rem 1rem;}
+.week-card{background:rgba(255,255,255,0.72);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.8);border-radius:28px;padding:36px 30px;width:100%;max-width:560px;box-shadow:0 16px 60px rgba(23,79,73,0.16);}
+.week-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--c7);text-align:center;}
+.week-sub{font-size:13px;color:var(--c5);text-align:center;margin:6px 0 22px;line-height:1.6;}
+.week-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:10px;margin-bottom:20px;}
+.day-chip{border:2px solid var(--c2);background:#fff;border-radius:16px;padding:12px 6px;text-align:center;cursor:pointer;transition:all 0.15s;user-select:none;}
+.day-chip:hover:not(.locked){border-color:var(--c4);transform:translateY(-2px);}
+.day-chip.selected{background:linear-gradient(135deg,var(--c4),var(--c6));border-color:var(--c6);color:#fff;box-shadow:0 6px 18px rgba(43,173,160,0.35);}
+.day-chip.selected .dc-week,.day-chip.selected .dc-num,.day-chip.selected .dc-month{color:#fff;}
+.day-chip.locked{opacity:0.45;cursor:not-allowed;background:var(--c1);}
+.dc-week{font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--c6);text-transform:uppercase;letter-spacing:0.04em;}
+.dc-num{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--c7);margin:2px 0;}
+.dc-month{font-size:10px;color:var(--c5);}
+.dc-badge{font-size:9px;font-weight:700;margin-top:4px;color:#D4A017;}
+.day-chip.selected .dc-badge{color:#FFEAA0;}
+.week-selected-info{text-align:center;font-size:13px;color:var(--c6);font-weight:600;margin-bottom:16px;min-height:20px;}
+.btn-week-continue{width:100%;padding:15px;background:linear-gradient(135deg,var(--c4),var(--c6));color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;border:none;border-radius:14px;cursor:pointer;transition:opacity 0.15s,transform 0.12s;}
+.btn-week-continue:hover:not(:disabled){opacity:0.92;transform:translateY(-2px);}
+.btn-week-continue:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-week-back{width:100%;padding:11px;background:none;border:none;color:var(--c5);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
+.days-header-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;}
+.dh-chip{background:var(--c1);border:1px solid var(--c3);color:var(--c6);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
 .suspended-card{background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.9);border-radius:28px;padding:48px 40px;width:100%;max-width:480px;box-shadow:0 20px 70px rgba(23,79,73,0.25);text-align:center;}
@@ -1132,6 +1157,19 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
   </div>
 </div>
 
+
+<!-- ===== WEEK CALENDAR SCREEN ===== -->
+<div id="screen-week" class="screen">
+  <div class="week-card">
+    <div class="week-title">📅 Quais dias você vai viajar?</div>
+    <div class="week-sub">Selecione os dias da <strong>próxima semana</strong> em que usará o ônibus.<br>A associação usa essas reservas para solicitar os veículos às empresas com antecedência.</div>
+    <div class="week-grid" id="week-grid"></div>
+    <div class="week-selected-info" id="week-info">Nenhum dia selecionado</div>
+    <button class="btn-week-continue" id="btn-week-continue" disabled onclick="confirmWeekDays()">Escolher poltrona →</button>
+    <button class="btn-week-back" onclick="showBusSelectScreen()">← Trocar de ônibus</button>
+  </div>
+</div>
+
 <!-- ===== BLOCKED SCREEN ===== -->
 <div id="screen-blocked" class="screen">
   <div class="blocked-card">
@@ -1692,13 +1730,13 @@ function userToRow(u) {
 }
 function rowToTicket(r) {
   return { code: r.code, cpf: r.cpf, passenger: r.passenger, seat: r.seat, local: r.local,
-           busId: r.bus_id, busName: r.bus_name, bus: r.bus, date: r.date,
+           busId: r.bus_id, busName: r.bus_name, bus: r.bus, date: r.date, travelDate: r.travel_date,
            reservedAt: r.reserved_at, boardedAt: r.boarded_at, cancelled: r.cancelled,
            cancelReason: r.cancel_reason, valid: r.valid };
 }
 function ticketToRow(t) {
   return { code: t.code, cpf: t.cpf, passenger: t.passenger, seat: String(t.seat), local: t.local,
-           bus_id: t.busId || null, bus_name: t.busName || null, bus: t.bus || null, date: t.date || null,
+           bus_id: t.busId || null, bus_name: t.busName || null, bus: t.bus || null, date: t.date || null, travel_date: t.travelDate || null,
            reserved_at: t.reservedAt || null, boarded_at: t.boardedAt || null, cancelled: !!t.cancelled,
            cancel_reason: t.cancelReason || null, valid: t.valid !== false };
 }
@@ -1759,22 +1797,28 @@ async function dbRefresh() {
     ticketRows.forEach(r => allPassagens.push(rowToTicket(r)));
 
     const today = getTodayStr();
+    const travelOf = t => t.travelDate || (t.date ? t.date.slice(0,10) : null);
+    const ctxBusRefresh = currentBusContext();
     occupied.clear();
     boardedSeats.clear();
     allPassagens.forEach(t => {
       if (t.cancelled) return;
-      if (!t.date || !t.date.startsWith(today)) return;
+      if (ctxBusRefresh && t.busId !== ctxBusRefresh) return;
+      if (travelOf(t) !== today) return;
       String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => {
         occupied.set(n, t.passenger);
         if (t.boardedAt) boardedSeats.add(n);
       });
     });
 
-    // Passagens do usuário logado (hoje)
+    // Passagens do usuário: viagens de hoje em diante
     if (currentUser) {
+      const todayD = parseTicketDate(today);
       passagens.length = 0;
       allPassagens
-        .filter(t => t.cpf === currentUser.cpf && t.date && t.date.startsWith(today))
+        .filter(t => t.cpf === currentUser.cpf)
+        .filter(t => { const d = parseTicketDate(travelOf(t)); return d && d >= todayD; })
+        .sort((a, b) => parseTicketDate(travelOf(a)) - parseTicketDate(travelOf(b)))
         .forEach(t => passagens.push(t));
     }
 
@@ -2278,7 +2322,12 @@ function getBookingWindowStatus() {
 }
 
 function checkBookingWindow() {
-  if (!currentUser) return;
+  // Reserva semanal: a janela por horário foi substituída pelo calendário de 7 dias.
+  // Cada dia trava individualmente na véspera às 18h (WEEK_CUTOFF_HOUR).
+  const overlayOff = document.getElementById('window-overlay');
+  if (overlayOff) overlayOff.classList.remove('show');
+  return;
+  /* eslint-disable no-unreachable */
   const status = getBookingWindowStatusForUser(currentUser);
   const seatPanel = document.getElementById('panel-seats');
   const cabin     = document.getElementById('cabin');
@@ -2346,15 +2395,12 @@ function cleanLocal(local) {
 
 function getDeadlineInfo(ticket) {
   const now = new Date();
-  const day = now.getDay(); // 0=Sun,6=Sat
-  if (!CANCEL_DAYS.includes(day)) {
-    return { ok:false, msg:'Cancelamentos só são aceitos de segunda a quinta-feira.', level:'blocked' };
-  }
-  const bt = BOARDING_TIMES[cleanLocal(ticket.local)] || { h:16, m:40 };
-  // deadline = boarding time - 4h
+  const bt = getBoardingTime(ticket.local);
+  // Prazo: até 4h antes do embarque NO DIA DA VIAGEM
+  const travelDay = ticket.travelDate ? parseTicketDate(ticket.travelDate) : new Date(now);
   const deadlineHour = bt.h - 4;
   const deadlineMin  = bt.m;
-  const deadline = new Date(now);
+  const deadline = new Date(travelDay);
   deadline.setHours(deadlineHour < 0 ? 0 : deadlineHour, deadlineMin, 0, 0);
   if (now > deadline) {
     const bStr = `${String(bt.h).padStart(2,'0')}h${String(bt.m).padStart(2,'0')}`;
@@ -2544,7 +2590,8 @@ function renderPassagens() {
           <div class="pc-info"><div class="pc-info-label">Poltrona</div><div class="pc-info-val">${t.seat}</div></div>
           <div class="pc-info"><div class="pc-info-label">Embarque</div><div class="pc-info-val">${t.local}</div></div>
           <div class="pc-info"><div class="pc-info-label">Passageiro</div><div class="pc-info-val">${t.passenger}</div></div>
-          <div class="pc-info"><div class="pc-info-label">Data</div><div class="pc-info-val">${t.date}</div></div>
+          <div class="pc-info"><div class="pc-info-label">Viagem</div><div class="pc-info-val" style="font-weight:700;color:var(--c6);">${t.travelDate || t.date.slice(0,10)}</div></div>
+          <div class="pc-info"><div class="pc-info-label">Reservada em</div><div class="pc-info-val">${t.date}</div></div>
           ${t.cancelled && t.cancelReason ? `<div class="pc-info" style="flex-basis:100%;"><div class="pc-info-label">Motivo do cancelamento</div><div class="pc-info-val" style="color:#922b21;font-size:12px;">${t.cancelReason}</div></div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -2564,7 +2611,7 @@ function openTicket(idx) {
   document.getElementById('tk-code').textContent = t.code;
   document.getElementById('tk-name').textContent = t.passenger;
   document.getElementById('tk-cpf').textContent = t.cpf;
-  document.getElementById('tk-date').textContent = t.date;
+  document.getElementById('tk-date').textContent = (t.travelDate || t.date.slice(0,10)) + ' · viagem';
   if(document.getElementById('tk-busname')) document.getElementById('tk-busname').textContent = t.busName || '—';
   const cancelBtn = document.getElementById('btn-cancel-ticket');
   if(cancelBtn) cancelBtn.style.display = t.cancelled ? 'none' : '';
@@ -2648,6 +2695,25 @@ function doLogout() {
 // ---- BUILD CABIN ----
 function buildCabin() {
   rebuildMonitorSeats(selectedBus ? selectedBus.id : null);
+  // Ocupação = união dos dias de viagem selecionados (reserva semanal)
+  const weekOcc = (currentUser && currentUser.role === 'passenger' && selectedTravelDays.length)
+    ? getOccupiedForDays(selectedTravelDays, selectedBus ? selectedBus.id : null)
+    : null;
+  occupied.clear();
+  if (weekOcc) {
+    weekOcc.forEach((info, seat) => occupied.set(seat, info.passenger + (info.days.length < selectedTravelDays.length ? ' (' + info.days.join(', ') + ')' : '')));
+  } else {
+    // Contexto monitor/sem seleção: ocupação de HOJE no ônibus em exibição
+    const today = getTodayStr();
+    const ctxBus = currentBusContext();
+    allPassagens.forEach(t => {
+      if (t.cancelled) return;
+      if (ctxBus && t.busId !== ctxBus) return;
+      const td = t.travelDate || (t.date ? t.date.slice(0,10) : null);
+      if (td !== today) return;
+      String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => occupied.set(n, t.passenger));
+    });
+  }
   const cabin = document.getElementById('cabin');
   cabin.innerHTML = '';
   function makeSeat(num) {
@@ -2772,75 +2838,58 @@ function updateUI() {
 // ---- CONFIRM SEATS → TICKET ----
 function confirmSeats() {
   if(!currentUser) return;
-  const win = getBookingWindowStatusForUser(currentUser);
-  if (!win.open) { showToast('⛔ Janela de reservas fechada no momento.'); checkBookingWindow(); return; }
+  if (getPriority(currentUser) === 'blocked') { showScreen('blocked'); return; }
+  if (selectedTravelDays.length === 0) { showToast('Selecione os dias de viagem primeiro.'); showWeekScreen(); return; }
   const nums = Array.from(selected.keys()).sort((a,b)=>a-b);
   if(nums.length===0) return;
   const firstNum = nums[0];
   const firstLocal = selected.get(firstNum).local;
-  const code = 'PDS-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-' + firstNum;
   const now = new Date();
   const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-
   const busId   = selectedBus ? selectedBus.id   : '—';
   const busName = selectedBus ? selectedBus.name : 'Place';
 
-  currentTicket = {
-    passenger: currentUser.name,
-    cpf: currentUser.cpf,
-    seat: nums.join(', '),
-    local: nums.length > 1 ? firstLocal + ' (+' + (nums.length-1) + ')' : firstLocal,
-    code, date: dateStr,
-    reservedAt: dateStr,
-    boardedAt: null,
-    busId, busName,
-    bus: 'Place',
-    valid: true
-  };
-
-  nums.forEach(num => {
-    const passengerName = currentUser ? currentUser.name : 'Passageiro';
-    occupied.set(num, passengerName); selected.delete(num);
-    const el = document.querySelector(`.seat[data-num="${num}"]`);
-    if(el){
-      el.classList.remove('selected'); el.classList.add('occupied'); el.onclick=null;
-      el.innerHTML = seatSVG + `<span class="seat-num">${num}</span>`;
-      el.setAttribute('data-passenger', passengerName);
-    }
-  });
-  passagens.push({...currentTicket});
-  allPassagens.push({...currentTicket});
-  dbInsertTicket(currentTicket);
-  updatePassagensBadge();
-  updateUI();
-
-  // Fill ticket UI
-  document.getElementById('tk-seat').textContent = currentTicket.seat;
-  document.getElementById('tk-local').textContent = currentTicket.local;
-  document.getElementById('tk-code').textContent = currentTicket.code;
-  if(document.getElementById('tk-busname')) document.getElementById('tk-busname').textContent = currentTicket.busName || '—';
-  document.getElementById('tk-name').textContent = currentTicket.passenger;
-  document.getElementById('tk-cpf').textContent = currentTicket.cpf;
-  document.getElementById('tk-date').textContent = currentTicket.date;
-
-  // Generate QR Code
-  const qrEl = document.getElementById('ticket-qrcode');
-  qrEl.innerHTML = '';
-  try {
-    // QR contém APENAS o código — os dados completos vêm do banco na validação.
-    // QR pequeno e esparso = leitura instantânea, mesmo de telas de celular.
-    new QRCode(qrEl, {
-      text: currentTicket.code,
-      width: 180, height: 180,
-      colorDark: '#174F49', colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  } catch(e) {
-    const encoded = encodeURIComponent(currentTicket.code);
-    qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encoded}" width="180" height="180" style="border-radius:8px" alt="QR Code da passagem">`;
+  // Revalida disponibilidade em cada dia (alguém pode ter reservado nesse meio-tempo)
+  const occNow = getOccupiedForDays(selectedTravelDays, busId);
+  const conflict = nums.find(n => occNow.has(n));
+  if (conflict) {
+    const info = occNow.get(conflict);
+    showToast(`⚠️ A poltrona ${conflict} acabou de ser reservada (${info.days.join(', ')}). Escolha outra.`);
+    buildCabin(); updateUI();
+    return;
   }
 
-  showScreen('ticket');
+  // Um ticket por dia de viagem
+  const createdTickets = [];
+  selectedTravelDays.forEach(day => {
+    const code = 'PDS-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-' + firstNum;
+    const t = {
+      passenger: currentUser.name,
+      cpf: currentUser.cpf,
+      seat: nums.join(', '),
+      local: nums.length > 1 ? firstLocal + ' (+' + (nums.length-1) + ')' : firstLocal,
+      code,
+      date: dateStr,
+      reservedAt: dateStr,
+      travelDate: day,
+      boardedAt: null,
+      busId, busName,
+      bus: 'Place',
+      valid: true
+    };
+    passagens.push({...t});
+    allPassagens.push({...t});
+    dbInsertTicket(t);
+    createdTickets.push(t);
+  });
+
+  currentTicket = createdTickets[0];
+  nums.forEach(num => { selected.delete(num); });
+  buildCabin();
+  updateUI();
+  updatePassagensBadge();
+  showTicketScreen();
+  showToast(`✅ ${createdTickets.length} passagem(ns) emitida(s) — poltrona ${nums.join(', ')} nos dias selecionados.`);
 }
 
 // ---- SCAN / VALIDATE ----
@@ -2886,12 +2935,9 @@ function selectBusOpt(el, busId) {
 
 function confirmBusSelection() {
   if (!selectedBus) return;
-  document.getElementById('selected-bus-name').textContent = selectedBus.name;
-  document.getElementById('app-bus-sub').textContent = `Linha: ${selectedBus.name}`;
-  buildCabin();
-  showScreen('app');
-  // After showing app, check if booking window is open
-  checkBookingWindow();
+  // Memoriza o ônibus padrão do usuário neste dispositivo
+  try { if (currentUser) localStorage.setItem('place_default_bus_' + currentUser.cpf, selectedBus.id); } catch(e) {}
+  showWeekScreen();
 }
 
 function changeBus() {
@@ -2966,7 +3012,7 @@ function syncHistoryFromPassagens() {
     } else if (p.boardedAt) {
       recordHistory(currentUser.cpf, { code: p.code, date: p.boardedAt, seat: p.seat, local: p.local, bus: p.busName || p.bus, status: 'done' });
     } else if (isBoardingPast(p)) {
-      recordHistory(currentUser.cpf, { code: p.code, date: p.date, seat: p.seat, local: p.local, bus: p.busName || p.bus, status: 'absent' });
+      recordHistory(currentUser.cpf, { code: p.code, date: p.travelDate || p.date, seat: p.seat, local: p.local, bus: p.busName || p.bus, status: 'absent' });
     }
     // Passagens ativas (aguardando embarque) permanecem apenas em "Minhas Passagens"
   });
@@ -3393,6 +3439,123 @@ function resolveOfflineTicket(code) {
   return offlineList.find(p => p.code === code) || null;
 }
 
+
+// ═══════ RESERVA SEMANAL ANTECIPADA ═══════
+// Janela: os próximos 7 dias. Cada dia trava no CUTOFF (véspera às 18h),
+// prazo para a associação solicitar os ônibus às empresas terceirizadas.
+const WEEK_CUTOFF_HOUR = 18; // hora da véspera em que o dia fecha para reservas
+
+let selectedTravelDays = []; // ['dd/mm/yyyy', ...]
+
+function fmtDay(d) { return d.toLocaleDateString('pt-BR'); }
+
+function getWeekDays() {
+  // Próximos 7 dias a partir de amanhã
+  const days = [];
+  const now = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    // Dia trava quando passa das 18h da véspera
+    const cutoff = new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1, WEEK_CUTOFF_HOUR, 0, 0);
+    days.push({ date: d, str: fmtDay(d), locked: now > cutoff });
+  }
+  return days;
+}
+
+const WEEK_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MONTH_NAMES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+function showWeekScreen() {
+  renderWeekGrid();
+  showScreen('week');
+}
+
+function renderWeekGrid() {
+  const grid = document.getElementById('week-grid');
+  const days = getWeekDays();
+  // Remove seleções de dias que travaram nesse meio-tempo
+  selectedTravelDays = selectedTravelDays.filter(s => days.some(d => d.str === s && !d.locked));
+
+  grid.innerHTML = days.map(d => {
+    const sel = selectedTravelDays.includes(d.str);
+    const myTicket = passagens.find(p => !p.cancelled && p.travelDate === d.str);
+    return `<div class="day-chip ${sel ? 'selected' : ''} ${d.locked ? 'locked' : ''}"
+      onclick="${d.locked ? '' : `toggleTravelDay('${d.str}')`}"
+      title="${d.locked ? 'Reservas encerradas para este dia (prazo: véspera às ' + WEEK_CUTOFF_HOUR + 'h)' : d.str}">
+      <div class="dc-week">${WEEK_NAMES[d.date.getDay()]}</div>
+      <div class="dc-num">${d.date.getDate()}</div>
+      <div class="dc-month">${MONTH_NAMES[d.date.getMonth()]}</div>
+      ${d.locked ? '<div class="dc-badge">🔒 fechado</div>' : myTicket ? '<div class="dc-badge">🎫 reservado</div>' : ''}
+    </div>`;
+  }).join('');
+  updateWeekInfo();
+}
+
+function toggleTravelDay(str) {
+  const idx = selectedTravelDays.indexOf(str);
+  if (idx >= 0) selectedTravelDays.splice(idx, 1);
+  else {
+    // Impede duplicar reserva no mesmo dia
+    const already = passagens.find(p => !p.cancelled && p.travelDate === str);
+    if (already) { showToast(`Você já tem reserva para ${str} (poltrona ${already.seat}). Cancele-a antes de refazer.`); return; }
+    selectedTravelDays.push(str);
+  }
+  selectedTravelDays.sort((a, b) => parseTicketDate(a) - parseTicketDate(b));
+  renderWeekGrid();
+}
+
+function updateWeekInfo() {
+  const info = document.getElementById('week-info');
+  const btn = document.getElementById('btn-week-continue');
+  if (selectedTravelDays.length === 0) {
+    info.textContent = 'Nenhum dia selecionado';
+    btn.disabled = true;
+  } else {
+    info.textContent = `${selectedTravelDays.length} dia(s): ${selectedTravelDays.map(s => s.slice(0,5)).join(' · ')}`;
+    btn.disabled = false;
+  }
+}
+
+function confirmWeekDays() {
+  if (selectedTravelDays.length === 0) return;
+  document.getElementById('selected-bus-name').textContent = selectedBus.name;
+  document.getElementById('app-bus-sub').textContent = `Linha: ${selectedBus.name} · ${selectedTravelDays.map(s=>s.slice(0,5)).join(' · ')}`;
+  buildCabin();
+  showScreen('app');
+  switchPanel('seats');
+  renderDaysHeaderChips();
+}
+
+function renderDaysHeaderChips() {
+  let wrap = document.getElementById('days-header-chips');
+  const sidebar = document.querySelector('#panel-seats .sidebar');
+  if (!sidebar) return;
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'days-header-chips';
+    wrap.className = 'days-header-chips';
+    sidebar.prepend(wrap);
+  }
+  wrap.innerHTML = selectedTravelDays.map(s => `<span class="dh-chip">📅 ${s.slice(0,5)}</span>`).join('') +
+    `<span class="dh-chip" style="cursor:pointer;background:#fff;" onclick="showWeekScreen()">✏️ alterar dias</span>`;
+}
+
+// Ocupação combinada dos dias selecionados: poltrona indisponível se ocupada em QUALQUER um deles
+function getOccupiedForDays(days, busId) {
+  const map = new Map(); // seat -> {passenger, days:[]}
+  allPassagens.forEach(t => {
+    if (t.cancelled) return;
+    if (busId && t.busId !== busId) return; // cada ônibus tem seu próprio mapa de poltronas
+    const td = t.travelDate || (t.date ? t.date.slice(0,10) : null);
+    if (!td || !days.includes(td)) return;
+    String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => {
+      if (!map.has(n)) map.set(n, { passenger: t.passenger, days: [] });
+      map.get(n).days.push(td.slice(0,5));
+    });
+  });
+  return map;
+}
+
 // ---- BOARDING MAP ----
 const boardedSeats = new Set(); // seats confirmed boarded
 
@@ -3418,6 +3581,21 @@ function switchMonitorPanel(panel) {
 
 function buildBoardingMap() {
   rebuildMonitorSeats(currentBusContext());
+  // Ocupação de hoje restrita ao ônibus em que o monitor atua
+  const bmToday = getTodayStr();
+  const bmBus = currentBusContext();
+  occupied.clear();
+  boardedSeats.clear();
+  allPassagens.forEach(t => {
+    if (t.cancelled) return;
+    if (bmBus && t.busId !== bmBus) return;
+    const td = t.travelDate || (t.date ? t.date.slice(0,10) : null);
+    if (td !== bmToday) return;
+    String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => {
+      occupied.set(n, t.passenger);
+      if (t.boardedAt) boardedSeats.add(n);
+    });
+  });
   const wrap = document.getElementById('boarding-map');
   wrap.innerHTML = '';
 
@@ -3720,6 +3898,17 @@ async function processMonitorScan(raw) {
       return;
     }
     if (!data.valid || !['Place', 'Paradiso 1200 Semi-Leito'].includes(data.bus)) throw new Error('invalid');
+    // Passagem de outro dia não embarca hoje
+    const tDay = data.travelDate || (data.date ? data.date.slice(0,10) : null);
+    if (tDay && tDay !== getTodayStr()) {
+      card.className = 'scan-result-card wrong-bus';
+      icon.textContent = '📅';
+      title.textContent = 'Passagem de Outro Dia';
+      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Esta passagem é para <span>${tDay}</span> — hoje é ${getTodayStr()}.`;
+      resultEl.classList.add('show');
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
 
     if (monitorBusId && data.busId && data.busId !== monitorBusId) {
       const correctBus = data.busName || data.busId;
@@ -4466,7 +4655,7 @@ async function finishTrip() {
 
   const today = getTodayStr();
   const tripTickets = allPassagens.filter(t =>
-    !t.cancelled && t.busId === busId && t.date && t.date.startsWith(today));
+    !t.cancelled && t.busId === busId && (t.travelDate || (t.date ? t.date.slice(0,10) : null)) === today);
 
   const boarded = tripTickets.filter(t => t.boardedAt);
   const absent  = tripTickets.filter(t => !t.boardedAt);
@@ -4709,6 +4898,15 @@ function renderAdminTable() {
 function isBoardingPast(t) {
   const bt = getBoardingTime(t.local);
   if (!bt) return false;
+  // Com dia de viagem definido: passado se o dia já passou; se é hoje, aplica +1h
+  const td = t.travelDate || null;
+  if (td) {
+    const tDay = parseTicketDate(td);
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    if (tDay < today0) return true;
+    if (tDay > today0) return false;
+    // é hoje → segue para o cálculo de horário abaixo
+  }
   const now = new Date();
   const absentTime = new Date(now);
   // Absent only 1 hour after boarding time
