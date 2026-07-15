@@ -2551,6 +2551,11 @@ function escapeHtml(s) {
 const passagens = []; // array of ticket objects
 
 function switchPanel(panel) {
+  // Passageiro sem dias/ônibus definidos que tenta abrir o mapa → completa a seleção antes
+  if (panel === 'seats' && currentUser && currentUser.role === 'passenger') {
+    if (!selectedBus) { showBusSelectScreen(); return; }
+    if (selectedTravelDays.length === 0) { showWeekScreen(); return; }
+  }
   ['seats','passagens','historico'].forEach(p => {
     const el = document.getElementById('panel-' + p);
     if (el) el.classList.toggle('active', panel === p);
@@ -2667,17 +2672,40 @@ async function doLogin() {
   loginSuccess(user);
 }
 
-function loginSuccess(user) {
+async function loginSuccess(user) {
   currentUser = user;
-  dbRefresh();
   dbLoadHistory(user.cpf);
-  if (user.role === 'admin') { showAdminScreen(); return; }
-  if (user.role === 'monitor') { showMonitorScreen(); return; }
+  if (user.role === 'admin') { dbRefresh(); showAdminScreen(); return; }
+  if (user.role === 'monitor') { dbRefresh(); showMonitorScreen(); return; }
   if (user.role === 'passenger' && getPriority(user) === 'blocked') { showScreen('blocked'); return; }
+
   document.getElementById('app-avatar').textContent = user.initials;
   document.getElementById('app-user-name').textContent = user.name;
   document.getElementById('app-user-cpf').textContent = 'CPF: ' + user.cpf;
   document.getElementById('modal-passenger-name').textContent = user.name;
+
+  // Sincroniza antes de decidir a tela inicial (passagens vêm do banco)
+  await dbRefresh();
+
+  // Já tem passagens ativas? Vai direto para "Minhas Passagens"
+  const upcoming = passagens.filter(p => !p.cancelled);
+  if (upcoming.length > 0) {
+    // Restaura o ônibus da reserva (ou o padrão memorizado)
+    let bid = null;
+    try { bid = localStorage.getItem('place_default_bus_' + user.cpf); } catch(e) {}
+    if (!bid) bid = upcoming[0].busId;
+    selectedBus = BUSES.find(b => b.id === bid) || null;
+    if (selectedBus) {
+      document.getElementById('selected-bus-name').textContent = selectedBus.name;
+      document.getElementById('app-bus-sub').textContent = 'Linha: ' + selectedBus.name;
+    }
+    showScreen('app');
+    switchPanel('passagens');
+    showToast(`👋 Bem-vindo de volta, ${user.name.split(' ')[0]}! Suas passagens estão aqui.`);
+    return;
+  }
+
+  // Primeiro uso (ou sem reservas ativas): fluxo completo
   showBusSelectScreen();
 }
 
@@ -3449,30 +3477,47 @@ let selectedTravelDays = []; // ['dd/mm/yyyy', ...]
 
 function fmtDay(d) { return d.toLocaleDateString('pt-BR'); }
 
-// Semana de reservas: SEGUNDA a DOMINGO, aberta todo SÁBADO para a semana seguinte.
-// A cada sábado o calendário "vira" automaticamente para a nova semana.
-function getBookingWeekMonday() {
+// ═══ CICLO SEMANAL DE RESERVAS ═══
+// Abre: SEGUNDA-FEIRA às 08h  → seleção para a SEMANA SEGUINTE (seg a dom)
+// Fecha: DOMINGO às 18h       → a associação envia a relação de ônibus às empresas
+// Na segunda às 08h o calendário renova automaticamente para a próxima semana.
+const WEEK_OPEN_HOUR  = 8;   // segunda-feira, hora de abertura
+const WEEK_CLOSE_HOUR = 18;  // domingo, hora de fechamento (prazo da relação)
+
+function getBookingCycle() {
   const now = new Date();
+  // Âncora: a segunda-feira 08h mais recente
   const anchor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const sinceSaturday = (anchor.getDay() - 6 + 7) % 7; // dias desde o último sábado
-  anchor.setDate(anchor.getDate() - sinceSaturday);     // sábado mais recente (âncora)
-  const monday = new Date(anchor);
-  monday.setDate(anchor.getDate() + 2);                 // segunda-feira da semana aberta
-  return monday;
+  const sinceMonday = (anchor.getDay() - 1 + 7) % 7;
+  anchor.setDate(anchor.getDate() - sinceMonday);
+  anchor.setHours(WEEK_OPEN_HOUR, 0, 0, 0);
+  if (now < anchor) anchor.setDate(anchor.getDate() - 7); // antes de seg 08h → ciclo anterior
+
+  // Semana em oferta: a seguinte à da âncora
+  const weekMonday = new Date(anchor);
+  weekMonday.setDate(anchor.getDate() + 7);
+  weekMonday.setHours(0, 0, 0, 0);
+
+  // Fechamento: domingo (âncora + 6 dias) às 18h
+  const closeAt = new Date(anchor);
+  closeAt.setDate(anchor.getDate() + 6);
+  closeAt.setHours(WEEK_CLOSE_HOUR, 0, 0, 0);
+
+  // Próxima abertura: segunda seguinte às 08h
+  const nextOpen = new Date(anchor);
+  nextOpen.setDate(anchor.getDate() + 7);
+  nextOpen.setHours(WEEK_OPEN_HOUR, 0, 0, 0);
+
+  return { weekMonday, closeAt, nextOpen, open: now <= closeAt };
 }
 
 function getWeekDays() {
-  const now = new Date();
-  const monday = getBookingWeekMonday();
+  const cycle = getBookingCycle();
   const days = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    // Cada dia trava individualmente na véspera às WEEK_CUTOFF_HOUR
-    const cutoff = new Date(d);
-    cutoff.setDate(d.getDate() - 1);
-    cutoff.setHours(WEEK_CUTOFF_HOUR, 0, 0, 0);
-    days.push({ date: d, str: fmtDay(d), locked: now > cutoff });
+    const d = new Date(cycle.weekMonday);
+    d.setDate(cycle.weekMonday.getDate() + i);
+    days.push({ date: d, str: fmtDay(d), locked: !cycle.open });
   }
   return days;
 }
@@ -3490,8 +3535,13 @@ function renderWeekGrid() {
   const days = getWeekDays();
   // Intervalo exibido (Seg → Dom)
   const sub = document.getElementById('week-sub');
+  const cycle = getBookingCycle();
   if (sub && days.length) {
-    sub.innerHTML = `Semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong> — o calendário renova <strong>todo sábado</strong> para a semana seguinte.<br>A associação usa essas reservas para solicitar os veículos às empresas.`;
+    if (cycle.open) {
+      sub.innerHTML = `Semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong> — reservas abertas até <strong>domingo às ${WEEK_CLOSE_HOUR}h</strong>.<br>Após esse prazo, a associação envia a relação de ônibus às empresas.`;
+    } else {
+      sub.innerHTML = `⏳ Reservas encerradas para a semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong>.<br>Nova seleção abre <strong>segunda-feira às ${String(WEEK_OPEN_HOUR).padStart(2,'0')}h</strong> (${cycle.nextOpen.toLocaleDateString('pt-BR')}).`;
+    }
   }
   // Remove seleções de dias que travaram nesse meio-tempo
   selectedTravelDays = selectedTravelDays.filter(s => days.some(d => d.str === s && !d.locked));
@@ -3501,7 +3551,7 @@ function renderWeekGrid() {
     const myTicket = passagens.find(p => !p.cancelled && p.travelDate === d.str);
     return `<div class="day-chip ${sel ? 'selected' : ''} ${d.locked ? 'locked' : ''}"
       onclick="${d.locked ? '' : `toggleTravelDay('${d.str}')`}"
-      title="${d.locked ? 'Reservas encerradas para este dia (prazo: véspera às ' + WEEK_CUTOFF_HOUR + 'h)' : d.str}">
+      title="${d.locked ? 'Reservas encerradas — nova seleção abre segunda às ' + String(WEEK_OPEN_HOUR).padStart(2,'0') + 'h' : d.str}">
       <div class="dc-week">${WEEK_NAMES[d.date.getDay()]}</div>
       <div class="dc-num">${d.date.getDate()}</div>
       <div class="dc-month">${MONTH_NAMES[d.date.getMonth()]}</div>
