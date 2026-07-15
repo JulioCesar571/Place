@@ -1761,10 +1761,15 @@ function dbSaveSwap(s)        { return sb('/swaps', { method: 'POST', prefer: 'r
 function dbSavePresence(key, active) { return sb('/monitor_presence', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([{ key, active }]) }).catch(dbErr); }
 
 // ── Leitura completa + sincronização do estado ────────────────
-let dbRefreshBusy = false;
-async function dbRefresh() {
-  if (dbRefreshBusy) return;
-  dbRefreshBusy = true;
+let dbRefreshPromise = null;
+function dbRefresh() {
+  // Se já há uma sincronização em andamento, retorna a MESMA promise —
+  // quem der await espera de verdade a conclusão (corrige corrida no login)
+  if (dbRefreshPromise) return dbRefreshPromise;
+  dbRefreshPromise = _dbRefreshRun().finally(() => { dbRefreshPromise = null; });
+  return dbRefreshPromise;
+}
+async function _dbRefreshRun() {
   try {
     const [usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows] = await Promise.all([
       sb('/users?select=*'),
@@ -1839,9 +1844,23 @@ async function dbRefresh() {
   } catch(e) {
     dbOnline = false;
     console.warn('dbRefresh:', e.message);
-  } finally {
-    dbRefreshBusy = false;
   }
+}
+
+
+// Reconstrói a lista "Minhas Passagens" do usuário logado a partir do cache local.
+// Necessário quando a sincronização começou ANTES do login (corrida na 1ª carga).
+function rebuildUserPassagens() {
+  if (!currentUser) return;
+  const today = getTodayStr();
+  const todayD = parseTicketDate(today);
+  const travelOf = t => t.travelDate || (t.date ? t.date.slice(0,10) : null);
+  passagens.length = 0;
+  allPassagens
+    .filter(t => t.cpf === currentUser.cpf)
+    .filter(t => { const d = parseTicketDate(travelOf(t)); return d && d >= todayD; })
+    .sort((a, b) => parseTicketDate(travelOf(a)) - parseTicketDate(travelOf(b)))
+    .forEach(t => passagens.push(t));
 }
 
 // Re-renderiza apenas o que está visível, preservando seleções em andamento
@@ -2684,8 +2703,14 @@ async function loginSuccess(user) {
   document.getElementById('app-user-cpf').textContent = 'CPF: ' + user.cpf;
   document.getElementById('modal-passenger-name').textContent = user.name;
 
+  // Contexto de seleção sempre limpo no início da sessão
+  selectedTravelDays.length = 0;
+  selected.clear();
+
   // Sincroniza antes de decidir a tela inicial (passagens vêm do banco)
   await dbRefresh();
+  // A sincronização pode ter começado antes do login — reconstrói do cache
+  rebuildUserPassagens();
 
   // Já tem passagens ativas? Vai direto para "Minhas Passagens"
   const upcoming = passagens.filter(p => !p.cancelled);
@@ -2713,6 +2738,15 @@ function doLogout() {
   if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
   boardedSeats.clear();
   currentUser = null; selected.clear();
+  // Zera o contexto de reserva — nada vaza para o próximo usuário deste aparelho
+  selectedTravelDays.length = 0;
+  selectedBus = null;
+  const chips = document.getElementById('days-header-chips');
+  if (chips) chips.remove();
+  const wlBanner = document.getElementById('waitlist-banner');
+  if (wlBanner) wlBanner.remove();
+  const wlOffer = document.getElementById('waitlist-offer');
+  if (wlOffer) wlOffer.remove();
   document.querySelectorAll('.seat.selected').forEach(s => s.classList.remove('selected'));
   updateUI();
   showScreen('login');
