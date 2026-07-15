@@ -468,6 +468,11 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 .fab-logout svg{width:16px;height:16px;flex-shrink:0;}
 @media(max-width:700px){.fab-logout{padding:11px 15px;font-size:12px;bottom:14px;right:12px;}}
 
+
+/* ===== BOTÃO VOLTAR (mapa de poltronas) ===== */
+.btn-back-passagens{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.65);border:1.5px solid var(--c3);color:var(--c6);border-radius:12px;padding:9px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:14px;transition:all 0.15s;backdrop-filter:blur(6px);}
+.btn-back-passagens:hover{background:#fff;border-color:var(--c4);transform:translateX(-2px);}
+
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
 .suspended-card{background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.9);border-radius:28px;padding:48px 40px;width:100%;max-width:480px;box-shadow:0 20px 70px rgba(23,79,73,0.25);text-align:center;}
@@ -800,6 +805,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
     </div>
 
     <div class="app-panel active" id="panel-seats">
+    <button class="btn-back-passagens" onclick="switchPanel('passagens')">← Voltar para Minhas Passagens</button>
     <div class="swap-mode-banner" id="swap-mode-banner">
       <span id="swap-mode-text">Modo troca ativo</span>
       <button class="btn-swap-cancel" onclick="exitSwapMode()">✕ Sair do modo troca</button>
@@ -1015,6 +1021,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
     </div>
     <div class="bus-options" id="bus-options-list"></div>
     <button class="btn-select-bus" id="btn-select-bus" disabled onclick="confirmBusSelection()">Continuar →</button>
+    <button class="btn-week-back" id="back-passagens-bus" style="display:none;width:100%;color:var(--c6);font-weight:700;" onclick="backToPassagens()">🎫 Voltar para Minhas Passagens</button>
   </div>
 </div>
 
@@ -1182,6 +1189,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
     <div class="week-selected-info" id="week-info">Nenhum dia selecionado</div>
     <button class="btn-week-continue" id="btn-week-continue" disabled onclick="confirmWeekDays()">Escolher poltrona →</button>
     <button class="btn-week-back" onclick="showBusSelectScreen()">← Trocar de ônibus</button>
+    <button class="btn-week-back" id="back-passagens-week" style="display:none;color:var(--c6);font-weight:700;" onclick="backToPassagens()">🎫 Voltar para Minhas Passagens</button>
   </div>
 </div>
 
@@ -2983,8 +2991,25 @@ function confirmSeats() {
 
 
 // ---- BUS SELECTION ----
+
+// Volta para "Minhas Passagens" a partir das telas de seleção (ônibus/calendário)
+function backToPassagens() {
+  showScreen('app');
+  switchPanel('passagens');
+}
+
+// Mostra o atalho de retorno apenas para quem já tem passagens ativas
+function toggleBackToPassagens() {
+  const has = passagens.some(p => !p.cancelled);
+  ['back-passagens-bus', 'back-passagens-week'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = has ? 'inline-flex' : 'none';
+  });
+}
+
 function showBusSelectScreen() {
   const u = currentUser;
+  toggleBackToPassagens();
   document.getElementById('bs-avatar').textContent = u.initials;
   document.getElementById('bs-name').textContent = u.name;
   selectedBus = null;
@@ -3579,6 +3604,7 @@ const WEEK_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const MONTH_NAMES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 
 function showWeekScreen() {
+  toggleBackToPassagens();
   renderWeekGrid();
   showScreen('week');
 }
