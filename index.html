@@ -3559,8 +3559,10 @@ function fmtDay(d) { return d.toLocaleDateString('pt-BR'); }
 // Abre: SEGUNDA-FEIRA às 08h  → seleção para a SEMANA SEGUINTE (seg a dom)
 // Fecha: DOMINGO às 18h       → a associação envia a relação de ônibus às empresas
 // Na segunda às 08h o calendário renova automaticamente para a próxima semana.
-const WEEK_OPEN_HOUR  = 8;   // segunda-feira, hora de abertura
-const WEEK_CLOSE_HOUR = 18;  // domingo, hora de fechamento (prazo da relação)
+const WEEK_OPEN_HOUR    = 8;   // segunda-feira, hora de abertura
+const WEEK_CLOSE_OFFSET = 5;   // dias após a segunda de abertura (5 = sábado)
+const WEEK_CLOSE_HOUR   = 20;  // hora do fechamento (sábado às 20h)
+const WEEK_CLOSE_LABEL  = 'sábado';
 
 function getBookingCycle() {
   const now = new Date();
@@ -3576,9 +3578,9 @@ function getBookingCycle() {
   weekMonday.setDate(anchor.getDate() + 7);
   weekMonday.setHours(0, 0, 0, 0);
 
-  // Fechamento: domingo (âncora + 6 dias) às 18h
+  // Fechamento: âncora + WEEK_CLOSE_OFFSET dias (sábado) às WEEK_CLOSE_HOUR
   const closeAt = new Date(anchor);
-  closeAt.setDate(anchor.getDate() + 6);
+  closeAt.setDate(anchor.getDate() + WEEK_CLOSE_OFFSET);
   closeAt.setHours(WEEK_CLOSE_HOUR, 0, 0, 0);
 
   // Próxima abertura: segunda seguinte às 08h
@@ -3610,6 +3612,7 @@ function showWeekScreen() {
 }
 
 function renderWeekGrid() {
+  toggleBackToPassagens();
   const grid = document.getElementById('week-grid');
   const days = getWeekDays();
   // Intervalo exibido (Seg → Dom)
@@ -3617,7 +3620,7 @@ function renderWeekGrid() {
   const cycle = getBookingCycle();
   if (sub && days.length) {
     if (cycle.open) {
-      sub.innerHTML = `Semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong> — reservas abertas até <strong>domingo às ${WEEK_CLOSE_HOUR}h</strong>.<br>Após esse prazo, a associação envia a relação de ônibus às empresas.`;
+      sub.innerHTML = `Semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong> — reservas abertas até <strong>${WEEK_CLOSE_LABEL} às ${WEEK_CLOSE_HOUR}h</strong>.<br>Após esse prazo, a associação envia a relação de ônibus às empresas.`;
     } else {
       sub.innerHTML = `⏳ Reservas encerradas para a semana de <strong>${days[0].str.slice(0,5)}</strong> a <strong>${days[6].str.slice(0,5)}</strong>.<br>Nova seleção abre <strong>segunda-feira às ${String(WEEK_OPEN_HOUR).padStart(2,'0')}h</strong> (${cycle.nextOpen.toLocaleDateString('pt-BR')}).`;
     }
