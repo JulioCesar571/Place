@@ -511,6 +511,22 @@ body{-webkit-tap-highlight-color:transparent;}
 .rtc-board{background:#E8F5F3;color:#0F6E56;border:1px solid #7EC8BC;}
 .ms-reserved{background:var(--c4);}
 
+/* Visão simultânea de todas as linhas */
+.rt-occ-grid.all-mode{grid-template-columns:1fr;}
+.rt-all-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-top:16px;}
+.rt-bus-card{background:rgba(255,255,255,0.7);border:1.5px solid var(--c2);border-radius:16px;padding:14px;}
+.rt-bus-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;}
+.rt-bus-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--c7);}
+.rt-bus-pct{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;padding:3px 11px;border-radius:20px;}
+.rtp-low{background:var(--c1);color:var(--c6);}
+.rtp-mid{background:#FFF8DC;color:#7A5800;}
+.rtp-high{background:#fff0f0;color:#922b21;}
+.rt-bus-sub{font-size:11px;color:var(--c5);margin-bottom:10px;}
+.mosaic-sm .mosaic-seat{width:19px;height:19px;font-size:7px;border-radius:4px;}
+.mosaic-sm .mosaic{grid-template-columns:repeat(2,19px) 10px repeat(2,19px);gap:3px;padding:9px;}
+.mosaic-sm .ms-aisle{width:10px;}
+
+
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
 .suspended-card{background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.9);border-radius:28px;padding:48px 40px;width:100%;max-width:480px;box-shadow:0 20px 70px rgba(23,79,73,0.25);text-align:center;}
@@ -1341,6 +1357,10 @@ body{-webkit-tap-highlight-color:transparent;}
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 13h2v7H3v-7zm4-5h2v12H7V8zm4-4h2v16h-2V4zm4 7h2v9h-2v-9zm4-3h2v12h-2V8z"/></svg>
         Painel de Ocupação
       </button>
+      <button class="nav-btn" id="adm-tab-tempo" onclick="switchAdminTab('tempo')">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+        Tempo Real
+      </button>
       <button class="nav-btn" id="adm-tab-dashboard" onclick="switchAdminTab('dashboard')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M13 3v18h8V3h-8zM3 21h8v-8H3v8zm0-10h8V3H3v8z"/></svg>
         Dashboard
@@ -1438,36 +1458,6 @@ body{-webkit-tap-highlight-color:transparent;}
     <!-- TAB 2: OCUPAÇÃO -->
     <div class="admin-tab-panel" id="adm-panel-ocupacao">
 
-      <!-- Ocupação em Tempo Real -->
-      <div class="admin-card">
-        <div class="admin-card-title" style="justify-content:space-between;">
-          <span style="display:inline-flex;align-items:center;gap:10px;">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" opacity="0"/><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z"/></svg>
-            Ocupação em Tempo Real
-          </span>
-          <span class="rt-live"><i></i>AO VIVO</span>
-        </div>
-        <div class="filter-bar">
-          <div class="filter-group">
-            <span class="filter-label">Dia:</span>
-            <select class="filter-select" id="rt-day-filter" onchange="renderRealtimeOcc()"></select>
-          </div>
-          <div class="filter-group">
-            <span class="filter-label">Ônibus:</span>
-            <select class="filter-select" id="rt-bus-filter" onchange="renderRealtimeOcc()"></select>
-          </div>
-        </div>
-        <div class="rt-occ-grid">
-          <div>
-            <div class="rt-pct" id="rt-pct">0<small>%</small></div>
-            <div style="font-size:12px;color:var(--c5);font-weight:600;margin-top:4px;" id="rt-pct-label">de ocupação</div>
-            <div class="rt-bar"><div class="rt-bar-fill" id="rt-bar-fill" style="width:0%"></div></div>
-            <div class="rt-counts" id="rt-counts"></div>
-          </div>
-          <div id="rt-mosaic"></div>
-        </div>
-      </div>
-
       <div class="admin-card">
         <div class="admin-card-title">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v7H3v-7zm4-5h2v12H7V8zm4-4h2v16h-2V4zm4 7h2v9h-2v-9zm4-3h2v12h-2V8z"/></svg>
@@ -1501,6 +1491,40 @@ body{-webkit-tap-highlight-color:transparent;}
         </div>
         <div id="occupancy-charts"></div>
       </div>
+    </div>
+
+    <!-- TAB: TEMPO REAL -->
+    <div class="admin-tab-panel" id="adm-panel-tempo">
+      <!-- Ocupação em Tempo Real -->
+      <div class="admin-card">
+        <div class="admin-card-title" style="justify-content:space-between;">
+          <span style="display:inline-flex;align-items:center;gap:10px;">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" opacity="0"/><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z"/></svg>
+            Ocupação em Tempo Real
+          </span>
+          <span class="rt-live"><i></i>AO VIVO</span>
+        </div>
+        <div class="filter-bar">
+          <div class="filter-group">
+            <span class="filter-label">Dia:</span>
+            <select class="filter-select" id="rt-day-filter" onchange="renderRealtimeOcc()"></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Ônibus:</span>
+            <select class="filter-select" id="rt-bus-filter" onchange="renderRealtimeOcc()"></select>
+          </div>
+        </div>
+        <div class="rt-occ-grid">
+          <div>
+            <div class="rt-pct" id="rt-pct">0<small>%</small></div>
+            <div style="font-size:12px;color:var(--c5);font-weight:600;margin-top:4px;" id="rt-pct-label">de ocupação</div>
+            <div class="rt-bar"><div class="rt-bar-fill" id="rt-bar-fill" style="width:0%"></div></div>
+            <div class="rt-counts" id="rt-counts"></div>
+          </div>
+          <div id="rt-mosaic"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- TAB: DASHBOARD EXECUTIVO -->
@@ -4932,37 +4956,17 @@ function rtWeekOptions() {
   return mk(thisMonday, 'Semana atual') + mk(nextMonday, 'Próxima semana (em reserva)');
 }
 
-function renderRealtimeOcc() {
-  const daySel = document.getElementById('rt-day-filter');
-  const busSel = document.getElementById('rt-bus-filter');
-  if (!daySel || !busSel) return;
-
-  // Popula os selects preservando a escolha
-  const prevDay = daySel.value;
-  daySel.innerHTML = rtWeekOptions();
-  daySel.value = [...daySel.options].some(o => o.value === prevDay) ? prevDay : getTodayStr();
-  if (!daySel.value) daySel.selectedIndex = 0;
-
-  const prevBus = busSel.value;
-  busSel.innerHTML = BUSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-  busSel.value = [...busSel.options].some(o => o.value === prevBus) ? prevBus : (BUSES[0] ? BUSES[0].id : '');
-
-  const day = daySel.value;
-  const busId = busSel.value;
-
-  // Poltronas de monitores desta linha (independente de presença do dia — visão de capacidade)
+// Calcula a ocupação de UMA linha em UM dia
+function computeBusOcc(day, busId) {
   const monSeats = new Set(Object.values(USERS)
     .filter(u => u.role === 'monitor' && u.seat && u.busId === busId)
     .map(u => u.seat));
-
-  // Tickets do dia+ônibus
   const dayTickets = allPassagens.filter(t => {
     if (t.cancelled) return false;
     if (t.busId !== busId) return false;
     return (t.travelDate || (t.date ? t.date.slice(0,10) : null)) === day;
   });
-
-  const seatState = {}; // n -> 'boarded' | 'reserved' | 'monitor' | 'free'
+  const seatState = {};
   let reserved = 0, boarded = 0;
   for (let n = 1; n <= 46; n++) {
     if (monSeats.has(n)) { seatState[n] = 'monitor'; continue; }
@@ -4973,28 +4977,13 @@ function renderRealtimeOcc() {
   }
   const capacity = 46 - monSeats.size;
   const taken = reserved + boarded;
-  const free = capacity - taken;
-  const pct = capacity ? Math.round((taken / capacity) * 100) : 0;
+  return { seatState, reserved, boarded, free: capacity - taken, capacity,
+           pct: capacity ? Math.round((taken / capacity) * 100) : 0, monCount: monSeats.size };
+}
 
-  document.getElementById('rt-pct').innerHTML = pct + '<small>%</small>';
-  const busName = (BUSES.find(b => b.id === busId) || {}).name || busId;
-  document.getElementById('rt-pct-label').textContent = `de ocupação — ${busName} · ${day.slice(0,5)}`;
-  const fill = document.getElementById('rt-bar-fill');
-  fill.style.width = pct + '%';
-  fill.style.background = pct >= 90 ? 'linear-gradient(90deg,#e24b4a,#922b21)'
-                        : pct >= 60 ? 'linear-gradient(90deg,#D4A017,#B8860B)'
-                        : 'linear-gradient(90deg,var(--c4),var(--c6))';
-
-  const isToday = day === getTodayStr();
-  document.getElementById('rt-counts').innerHTML =
-    (isToday && boarded ? `<span class="rt-count rtc-board">✅ ${boarded} embarcaram</span>` : '') +
-    `<span class="rt-count rtc-occ">🎫 ${reserved + (isToday ? 0 : boarded)} reservadas</span>
-     <span class="rt-count rtc-free">🪑 ${free} livres</span>
-     <span class="rt-count rtc-mon">⭐ ${monSeats.size} monitor(es)</span>`;
-
-  // Mosaico de lugares
+function rtMosaicGrid(seatState, small) {
   const cls = st => st === 'boarded' ? 'ms-boarded' : st === 'reserved' ? 'ms-reserved' : st === 'monitor' ? 'ms-monitor' : 'ms-free';
-  let grid = '<div class="mosaic">';
+  let grid = `<div class="${small ? 'mosaic-sm' : ''}"><div class="mosaic">`;
   for (let row = 0; row < 11; row++) {
     const base = row * 4;
     [base+1, base+2].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
@@ -5002,14 +4991,90 @@ function renderRealtimeOcc() {
     [base+3, base+4].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
   }
   [45,46].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
-  grid += '<div class="ms-aisle"></div><div class="mosaic-seat ms-free" style="grid-column:span 2;width:auto;font-size:8px;">WC</div></div>';
-  grid += `<div class="mosaic-legend">
+  grid += '<div class="ms-aisle"></div><div class="mosaic-seat ms-free" style="grid-column:span 2;width:auto;font-size:8px;">WC</div></div></div>';
+  return grid;
+}
+
+function renderRealtimeOcc() {
+  const daySel = document.getElementById('rt-day-filter');
+  const busSel = document.getElementById('rt-bus-filter');
+  if (!daySel || !busSel) return;
+
+  const prevDay = daySel.value;
+  daySel.innerHTML = rtWeekOptions();
+  daySel.value = [...daySel.options].some(o => o.value === prevDay) ? prevDay : getTodayStr();
+  if (!daySel.value) daySel.selectedIndex = 0;
+
+  const prevBus = busSel.value;
+  busSel.innerHTML = '<option value="__all">🚌 Todos os ônibus</option>' +
+    BUSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  busSel.value = [...busSel.options].some(o => o.value === prevBus) ? prevBus : '__all';
+
+  const day = daySel.value;
+  const isToday = day === getTodayStr();
+  const gridWrap = document.querySelector('#adm-panel-tempo .rt-occ-grid');
+
+  const legend = `<div class="mosaic-legend">
     ${isToday ? '<span><i style="background:#1D9E75"></i>Embarcou</span>' : ''}
     <span><i style="background:var(--c4)"></i>Reservada</span>
     <span><i style="background:#D4A017"></i>Monitor</span>
     <span><i style="background:#cfe5e1"></i>Livre</span>
   </div>`;
-  document.getElementById('rt-mosaic').innerHTML = grid;
+
+  const barColor = pct => pct >= 90 ? 'linear-gradient(90deg,#e24b4a,#922b21)'
+                       : pct >= 60 ? 'linear-gradient(90deg,#D4A017,#B8860B)'
+                       : 'linear-gradient(90deg,var(--c4),var(--c6))';
+
+  // ═══ MODO: TODOS OS ÔNIBUS ═══
+  if (busSel.value === '__all') {
+    if (gridWrap) gridWrap.classList.add('all-mode');
+    const results = BUSES.map(b => ({ bus: b, ...computeBusOcc(day, b.id) }));
+    const totCap = results.reduce((s, r) => s + r.capacity, 0);
+    const totTaken = results.reduce((s, r) => s + r.reserved + r.boarded, 0);
+    const totFree = totCap - totTaken;
+    const totPct = totCap ? Math.round((totTaken / totCap) * 100) : 0;
+
+    document.getElementById('rt-pct').innerHTML = totPct + '<small>%</small>';
+    document.getElementById('rt-pct-label').textContent = `ocupação geral da frota · ${BUSES.length} linha(s) · ${day.slice(0,5)}`;
+    const fill = document.getElementById('rt-bar-fill');
+    fill.style.width = totPct + '%';
+    fill.style.background = barColor(totPct);
+    document.getElementById('rt-counts').innerHTML =
+      `<span class="rt-count rtc-occ">🎫 ${totTaken} ocupadas</span>
+       <span class="rt-count rtc-free">🪑 ${totFree} livres na frota</span>`;
+
+    const pctCls = p => p >= 90 ? 'rtp-high' : p >= 60 ? 'rtp-mid' : 'rtp-low';
+    document.getElementById('rt-mosaic').innerHTML =
+      `<div class="rt-all-grid">` +
+      results.map(r => `
+        <div class="rt-bus-card">
+          <div class="rt-bus-head">
+            <div class="rt-bus-name">${r.bus.icon || '🚌'} ${r.bus.name}</div>
+            <div class="rt-bus-pct ${pctCls(r.pct)}">${r.pct}%</div>
+          </div>
+          <div class="rt-bus-sub">🎫 ${r.reserved + r.boarded} ocupadas · 🪑 ${r.free} livres${isToday && r.boarded ? ' · ✅ ' + r.boarded + ' embarcaram' : ''}</div>
+          ${rtMosaicGrid(r.seatState, true)}
+        </div>`).join('') +
+      `</div>` + legend;
+    return;
+  }
+
+  // ═══ MODO: UMA LINHA ═══
+  if (gridWrap) gridWrap.classList.remove('all-mode');
+  const busId = busSel.value;
+  const r = computeBusOcc(day, busId);
+  document.getElementById('rt-pct').innerHTML = r.pct + '<small>%</small>';
+  const busName = (BUSES.find(b => b.id === busId) || {}).name || busId;
+  document.getElementById('rt-pct-label').textContent = `de ocupação — ${busName} · ${day.slice(0,5)}`;
+  const fill = document.getElementById('rt-bar-fill');
+  fill.style.width = r.pct + '%';
+  fill.style.background = barColor(r.pct);
+  document.getElementById('rt-counts').innerHTML =
+    (isToday && r.boarded ? `<span class="rt-count rtc-board">✅ ${r.boarded} embarcaram</span>` : '') +
+    `<span class="rt-count rtc-occ">🎫 ${r.reserved + (isToday ? 0 : r.boarded)} reservadas</span>
+     <span class="rt-count rtc-free">🪑 ${r.free} livres</span>
+     <span class="rt-count rtc-mon">⭐ ${r.monCount} monitor(es)</span>`;
+  document.getElementById('rt-mosaic').innerHTML = rtMosaicGrid(r.seatState, false) + legend;
 }
 
 // ---- RESUMO PÓS-VIAGEM ----
@@ -5133,7 +5198,7 @@ function populateBusSelects() {
 
 // ---- ADMIN TABS ----
 function switchAdminTab(tab) {
-  const tabs = ['relacao','ocupacao','dashboard','resumos','usuarios','linhas'];
+  const tabs = ['relacao','ocupacao','tempo','dashboard','resumos','usuarios','linhas'];
   tabs.forEach(t => {
     const panel = document.getElementById('adm-panel-' + t);
     if (panel) panel.classList.toggle('active', t === tab);
@@ -5141,7 +5206,8 @@ function switchAdminTab(tab) {
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'relacao') renderAdminTable();
-  if (tab === 'ocupacao') { renderOccupancyCharts(); renderRealtimeOcc(); }
+  if (tab === 'ocupacao') renderOccupancyCharts();
+  if (tab === 'tempo') renderRealtimeOcc();
   if (tab === 'dashboard') renderDashboard();
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
