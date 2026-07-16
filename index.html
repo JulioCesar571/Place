@@ -12,8 +12,6 @@
 <meta name="application-name" content="Place">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   --c1:#E8F5F3;--c2:#B2D9D0;--c3:#7EC8BC;
@@ -472,6 +470,46 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 /* ===== BOTÃO VOLTAR (mapa de poltronas) ===== */
 .btn-back-passagens{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.65);border:1.5px solid var(--c3);color:var(--c6);border-radius:12px;padding:9px 16px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:14px;transition:all 0.15s;backdrop-filter:blur(6px);}
 .btn-back-passagens:hover{background:#fff;border-color:var(--c4);transform:translateX(-2px);}
+
+
+/* ═══ OTIMIZAÇÃO PARA APARELHOS SIMPLES ═══ */
+/* Toque imediato (remove atraso de 300ms) e sem flash azul ao tocar */
+button,.seat,.day-chip,.nav-btn,.bus-opt,.embarque-opt,.priority-select,.filter-select,a{touch-action:manipulation;}
+body{-webkit-tap-highlight-color:transparent;}
+
+@media(max-width:700px){
+  /* backdrop-filter (desfoque) é o efeito mais pesado p/ GPUs fracas —
+     removido no mobile e compensado com fundos mais opacos (visual ~idêntico) */
+  *{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+  .login-card,.busselect-card,.week-card,.blocked-card,.suspended-card,
+  .admin-card,.monitor-card,.trip-report-card,.swap-request,.hist-item,
+  .admin-tabs,.ticket-card,.passagem-card,.cancel-card{background:rgba(255,255,255,0.94) !important;}
+  /* Sombras mais leves = menos repintura ao rolar */
+  .admin-card,.monitor-card,.login-card,.busselect-card,.week-card{box-shadow:0 6px 20px rgba(23,79,73,0.14) !important;}
+  /* Fontes ≥16px em campos evitam o zoom automático do iOS ao focar */
+  input,select,textarea{font-size:16px !important;}
+  /* Alvos de toque confortáveis */
+  .day-chip{min-height:78px;}
+  .nav-btn{min-height:42px;}
+}
+
+
+/* ===== OCUPAÇÃO EM TEMPO REAL ===== */
+.rt-live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#922b21;background:#fff0f0;border:1px solid #e24b4a;border-radius:20px;padding:4px 11px;}
+.rt-live i{width:8px;height:8px;border-radius:50%;background:#e24b4a;animation:pulse 1.4s infinite;}
+.rt-occ-grid{display:grid;grid-template-columns:1fr auto;gap:22px;align-items:start;}
+@media(max-width:760px){.rt-occ-grid{grid-template-columns:1fr;}}
+.rt-pct{font-family:'Syne',sans-serif;font-size:52px;font-weight:800;color:var(--c6);line-height:1;}
+.rt-pct small{font-size:20px;color:var(--c5);}
+.rt-bar{height:14px;background:var(--c1);border-radius:8px;overflow:hidden;margin:12px 0 16px;}
+.rt-bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--c4),var(--c6));transition:width 0.6s cubic-bezier(.34,1.56,.64,1);}
+.rt-counts{display:flex;gap:8px;flex-wrap:wrap;}
+.rt-count{font-size:12px;font-weight:700;padding:6px 13px;border-radius:20px;}
+.rtc-occ{background:var(--c1);color:var(--c6);border:1px solid var(--c3);}
+.rtc-free{background:#fff;color:var(--c5);border:1px solid var(--c2);}
+.rtc-mon{background:#FFF8DC;color:#7A5800;border:1px solid #D4A017;}
+.rtc-board{background:#E8F5F3;color:#0F6E56;border:1px solid #7EC8BC;}
+.ms-reserved{background:var(--c4);}
 
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
@@ -1399,6 +1437,37 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 
     <!-- TAB 2: OCUPAÇÃO -->
     <div class="admin-tab-panel" id="adm-panel-ocupacao">
+
+      <!-- Ocupação em Tempo Real -->
+      <div class="admin-card">
+        <div class="admin-card-title" style="justify-content:space-between;">
+          <span style="display:inline-flex;align-items:center;gap:10px;">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" opacity="0"/><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z"/></svg>
+            Ocupação em Tempo Real
+          </span>
+          <span class="rt-live"><i></i>AO VIVO</span>
+        </div>
+        <div class="filter-bar">
+          <div class="filter-group">
+            <span class="filter-label">Dia:</span>
+            <select class="filter-select" id="rt-day-filter" onchange="renderRealtimeOcc()"></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Ônibus:</span>
+            <select class="filter-select" id="rt-bus-filter" onchange="renderRealtimeOcc()"></select>
+          </div>
+        </div>
+        <div class="rt-occ-grid">
+          <div>
+            <div class="rt-pct" id="rt-pct">0<small>%</small></div>
+            <div style="font-size:12px;color:var(--c5);font-weight:600;margin-top:4px;" id="rt-pct-label">de ocupação</div>
+            <div class="rt-bar"><div class="rt-bar-fill" id="rt-bar-fill" style="width:0%"></div></div>
+            <div class="rt-counts" id="rt-counts"></div>
+          </div>
+          <div id="rt-mosaic"></div>
+        </div>
+      </div>
+
       <div class="admin-card">
         <div class="admin-card-title">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v7H3v-7zm4-5h2v12H7V8zm4-4h2v16h-2V4zm4 7h2v9h-2v-9zm4-3h2v12h-2V8z"/></svg>
@@ -1789,6 +1858,13 @@ function dbSavePresence(key, active) { return sb('/monitor_presence', { method: 
 
 // ── Leitura completa + sincronização do estado ────────────────
 let dbRefreshPromise = null;
+let _lastDbSnapshot = '';
+// Hash rápido (djb2) — detecta mudanças sem custo relevante
+function _quickHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return h;
+}
 function dbRefresh() {
   // Se já há uma sincronização em andamento, retorna a MESMA promise —
   // quem der await espera de verdade a conclusão (corrige corrida no login)
@@ -1807,6 +1883,12 @@ async function _dbRefreshRun() {
       sb('/buses?select=*&order=id.asc').catch(() => []),
       sb('/points?select=*&order=h.asc,m.asc').catch(() => []),
     ]);
+
+    // Nada mudou desde a última sincronização? Pula todo o retrabalho
+    // (rebuilds de estado + re-render custam caro em celulares fracos)
+    const snapshot = _quickHash(JSON.stringify([usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows])) + ':' + (currentUser ? currentUser.cpf : '');
+    if (snapshot === _lastDbSnapshot) { return; }
+    _lastDbSnapshot = snapshot;
 
     // LINHAS e PONTOS geridos pelo admin (fallback: valores fixos se tabelas vazias)
     if (busRows && busRows.length) {
@@ -1905,7 +1987,7 @@ function refreshVisiblePanels() {
     const monVisible = document.getElementById('screen-monitor') && document.getElementById('screen-monitor').classList.contains('active');
     if (monVisible && document.getElementById('mon-panel-scan').classList.contains('active')) buildBoardingMap();
     const admVisible = document.getElementById('screen-admin') && document.getElementById('screen-admin').classList.contains('active');
-    if (admVisible) { renderAdminStats(); renderAdminTable(); renderOccupancyCharts(); }
+    if (admVisible) { renderAdminStats(); renderAdminTable(); renderOccupancyCharts(); renderRealtimeOcc(); }
   } catch(e) { /* painéis podem não existir ainda */ }
 }
 
@@ -1919,8 +2001,12 @@ async function dbLoadHistory(cpf) {
   } catch(e) { console.warn('history:', e.message); }
 }
 
-// Polling: mantém todos os dispositivos sincronizados
-setInterval(() => { if (currentUser) dbRefresh(); }, 20000);
+// Polling: mantém todos os dispositivos sincronizados.
+// Pausa quando a aba está em segundo plano (bateria/CPU) e sincroniza ao retornar.
+setInterval(() => { if (currentUser && !document.hidden) dbRefresh(); }, 20000);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentUser) dbRefresh();
+});
 
 // ═══════════════════════════════════════════════════════════════
 // SISTEMA DE LICENÇA REMOTA (controle externo pelo fornecedor)
@@ -2042,7 +2128,7 @@ async function verifyLicense() {
 }
 
 // Re-verify periodically while the app is open (picks up remote suspension in minutes)
-setInterval(() => { if (LICENSE_URL) verifyLicense(); }, 5 * 60000);
+setInterval(() => { if (LICENSE_URL && !document.hidden) verifyLicense(); }, 5 * 60000);
 
 // Watchdog: se após 12s a verificação não concluiu (visualizadores de documentos
 // como o preview do WhatsApp/iOS bloqueiam requisições), orienta o usuário
@@ -2066,6 +2152,26 @@ setTimeout(() => {
 // Kick off on load
 verifyLicense();
 dbRefresh(); // primeira carga do banco (usuários p/ login em qualquer dispositivo)
+
+
+// ═══ CARREGAMENTO SOB DEMANDA (otimização p/ aparelhos e redes fracas) ═══
+// html5-qrcode (~300KB) só carrega quando um MONITOR abre o scanner;
+// SheetJS (~900KB) só carrega quando o ADMIN importa planilha Excel.
+// Passageiros comuns baixam ~1.2MB a menos na abertura do sistema.
+const _loadedScripts = {};
+function loadScriptOnce(url) {
+  if (_loadedScripts[url]) return _loadedScripts[url];
+  _loadedScripts[url] = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = resolve;
+    s.onerror = () => { delete _loadedScripts[url]; reject(new Error('Falha ao carregar ' + url)); };
+    document.head.appendChild(s);
+  });
+  return _loadedScripts[url];
+}
+const LIB_HTML5QR = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+const LIB_XLSX    = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
 // ---- STATE ----
 const USERS = {
@@ -3941,6 +4047,11 @@ async function startMonScanReader() {
   hint.textContent = 'Iniciando câmera...';
 
   try {
+    // Baixa a biblioteca do scanner apenas na primeira necessidade (monitores)
+    if (typeof Html5Qrcode === 'undefined') {
+      hint.textContent = 'Carregando leitor de QR...';
+      await loadScriptOnce(LIB_HTML5QR);
+    }
     // Para instância anterior antes de criar outra (senão a câmera fica "presa")
     if (monScanReader) {
       try { await monScanReader.stop(); } catch(e) {}
@@ -4305,10 +4416,16 @@ function showImportResult(elId, res) {
 }
 
 // --- Planilha (CSV/XLSX) ---
-function handleImportFile(input) {
+async function handleImportFile(input) {
   const file = input.files[0];
   if (!file) return;
   const ext = file.name.split('.').pop().toLowerCase();
+  // Excel: carrega a biblioteca somente agora (900KB que passageiros nunca baixam)
+  if (ext !== 'csv' && typeof XLSX === 'undefined') {
+    showToast('📦 Carregando leitor de Excel...');
+    try { await loadScriptOnce(LIB_XLSX); }
+    catch(err) { showImportResult('import-result', { created: [], skipped: ['Não foi possível carregar o leitor de Excel — verifique a internet ou use CSV.'] }); input.value=''; return; }
+  }
   const reader = new FileReader();
   reader.onload = e => {
     let rows = [];
@@ -4794,6 +4911,107 @@ function heatmapHtml(occPeriod, occBus, periodStart, periodEnd) {
   </div>`;
 }
 
+
+// ---- OCUPAÇÃO EM TEMPO REAL (admin) ----
+function rtWeekOptions() {
+  // Semana operacional atual (seg→dom) + semana em reserva (próxima)
+  const now = new Date();
+  const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  thisMonday.setDate(thisMonday.getDate() - ((thisMonday.getDay() - 1 + 7) % 7));
+  const mk = (base, label) => {
+    let html = `<optgroup label="${label}">`;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base); d.setDate(base.getDate() + i);
+      const str = d.toLocaleDateString('pt-BR');
+      const isToday = str === getTodayStr();
+      html += `<option value="${str}">${WEEK_NAMES[d.getDay()]} ${str.slice(0,5)}${isToday ? ' · HOJE' : ''}</option>`;
+    }
+    return html + '</optgroup>';
+  };
+  const nextMonday = new Date(thisMonday); nextMonday.setDate(thisMonday.getDate() + 7);
+  return mk(thisMonday, 'Semana atual') + mk(nextMonday, 'Próxima semana (em reserva)');
+}
+
+function renderRealtimeOcc() {
+  const daySel = document.getElementById('rt-day-filter');
+  const busSel = document.getElementById('rt-bus-filter');
+  if (!daySel || !busSel) return;
+
+  // Popula os selects preservando a escolha
+  const prevDay = daySel.value;
+  daySel.innerHTML = rtWeekOptions();
+  daySel.value = [...daySel.options].some(o => o.value === prevDay) ? prevDay : getTodayStr();
+  if (!daySel.value) daySel.selectedIndex = 0;
+
+  const prevBus = busSel.value;
+  busSel.innerHTML = BUSES.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  busSel.value = [...busSel.options].some(o => o.value === prevBus) ? prevBus : (BUSES[0] ? BUSES[0].id : '');
+
+  const day = daySel.value;
+  const busId = busSel.value;
+
+  // Poltronas de monitores desta linha (independente de presença do dia — visão de capacidade)
+  const monSeats = new Set(Object.values(USERS)
+    .filter(u => u.role === 'monitor' && u.seat && u.busId === busId)
+    .map(u => u.seat));
+
+  // Tickets do dia+ônibus
+  const dayTickets = allPassagens.filter(t => {
+    if (t.cancelled) return false;
+    if (t.busId !== busId) return false;
+    return (t.travelDate || (t.date ? t.date.slice(0,10) : null)) === day;
+  });
+
+  const seatState = {}; // n -> 'boarded' | 'reserved' | 'monitor' | 'free'
+  let reserved = 0, boarded = 0;
+  for (let n = 1; n <= 46; n++) {
+    if (monSeats.has(n)) { seatState[n] = 'monitor'; continue; }
+    const tk = dayTickets.find(t => String(t.seat).split(',').map(x => parseInt(x.trim())).includes(n));
+    if (!tk) { seatState[n] = 'free'; continue; }
+    if (tk.boardedAt) { seatState[n] = 'boarded'; boarded++; }
+    else { seatState[n] = 'reserved'; reserved++; }
+  }
+  const capacity = 46 - monSeats.size;
+  const taken = reserved + boarded;
+  const free = capacity - taken;
+  const pct = capacity ? Math.round((taken / capacity) * 100) : 0;
+
+  document.getElementById('rt-pct').innerHTML = pct + '<small>%</small>';
+  const busName = (BUSES.find(b => b.id === busId) || {}).name || busId;
+  document.getElementById('rt-pct-label').textContent = `de ocupação — ${busName} · ${day.slice(0,5)}`;
+  const fill = document.getElementById('rt-bar-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct >= 90 ? 'linear-gradient(90deg,#e24b4a,#922b21)'
+                        : pct >= 60 ? 'linear-gradient(90deg,#D4A017,#B8860B)'
+                        : 'linear-gradient(90deg,var(--c4),var(--c6))';
+
+  const isToday = day === getTodayStr();
+  document.getElementById('rt-counts').innerHTML =
+    (isToday && boarded ? `<span class="rt-count rtc-board">✅ ${boarded} embarcaram</span>` : '') +
+    `<span class="rt-count rtc-occ">🎫 ${reserved + (isToday ? 0 : boarded)} reservadas</span>
+     <span class="rt-count rtc-free">🪑 ${free} livres</span>
+     <span class="rt-count rtc-mon">⭐ ${monSeats.size} monitor(es)</span>`;
+
+  // Mosaico de lugares
+  const cls = st => st === 'boarded' ? 'ms-boarded' : st === 'reserved' ? 'ms-reserved' : st === 'monitor' ? 'ms-monitor' : 'ms-free';
+  let grid = '<div class="mosaic">';
+  for (let row = 0; row < 11; row++) {
+    const base = row * 4;
+    [base+1, base+2].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
+    grid += '<div class="ms-aisle"></div>';
+    [base+3, base+4].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
+  }
+  [45,46].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
+  grid += '<div class="ms-aisle"></div><div class="mosaic-seat ms-free" style="grid-column:span 2;width:auto;font-size:8px;">WC</div></div>';
+  grid += `<div class="mosaic-legend">
+    ${isToday ? '<span><i style="background:#1D9E75"></i>Embarcou</span>' : ''}
+    <span><i style="background:var(--c4)"></i>Reservada</span>
+    <span><i style="background:#D4A017"></i>Monitor</span>
+    <span><i style="background:#cfe5e1"></i>Livre</span>
+  </div>`;
+  document.getElementById('rt-mosaic').innerHTML = grid;
+}
+
 // ---- RESUMO PÓS-VIAGEM ----
 function dbInsertTripReport(r) {
   return sb('/trip_reports', { method: 'POST', body: JSON.stringify([r]) }).catch(dbErr);
@@ -4923,7 +5141,7 @@ function switchAdminTab(tab) {
     if (btn) btn.classList.toggle('active', t === tab);
   });
   if (tab === 'relacao') renderAdminTable();
-  if (tab === 'ocupacao') renderOccupancyCharts();
+  if (tab === 'ocupacao') { renderOccupancyCharts(); renderRealtimeOcc(); }
   if (tab === 'dashboard') renderDashboard();
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
