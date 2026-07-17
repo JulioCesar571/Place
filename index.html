@@ -531,6 +531,30 @@ body{-webkit-tap-highlight-color:transparent;}
 .mosaic-sm .ms-aisle{width:10px;}
 
 
+
+/* ===== COMUNICADOS ===== */
+.announce-banner{background:linear-gradient(135deg,#FFF8DC,#FFEFC0);border:1.5px solid #D4A017;border-radius:14px;padding:13px 16px;margin-bottom:14px;display:flex;gap:11px;align-items:flex-start;}
+.announce-banner .ab-icon{font-size:20px;flex-shrink:0;}
+.announce-banner .ab-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#7A5800;}
+.announce-banner .ab-body{font-size:12px;color:#7A5800;margin-top:2px;line-height:1.5;}
+.announce-banner .ab-close{margin-left:auto;background:none;border:none;color:#B8860B;font-size:16px;cursor:pointer;padding:2px 6px;flex-shrink:0;}
+.announce-item{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:rgba(255,255,255,0.7);border:1px solid var(--c2);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+.announce-item.inactive{opacity:0.5;}
+.ai-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:var(--c7);}
+.ai-body{font-size:12px;color:var(--c5);margin-top:2px;}
+.ai-meta{font-size:10px;color:var(--c5);margin-top:5px;}
+.ai-actions{display:flex;gap:5px;flex-shrink:0;}
+/* ===== CONSOLIDAÇÃO ===== */
+.consol-card{background:linear-gradient(135deg,#E8F5F3,#d4ece8);border:2px solid var(--c4);border-radius:16px;padding:16px;margin-top:16px;}
+.consol-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--c7);display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.consol-item{background:rgba(255,255,255,0.85);border:1.5px solid var(--c3);border-radius:13px;padding:13px 15px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.consol-desc{font-size:13px;color:var(--c7);line-height:1.55;}
+.consol-desc strong{color:var(--c6);}
+.consol-save{font-size:11px;font-weight:800;color:#0F6E56;background:#E8F5F3;border:1px solid #7EC8BC;border-radius:20px;padding:4px 11px;display:inline-block;margin-top:5px;}
+.btn-consol{background:linear-gradient(135deg,var(--c4),var(--c6));color:#fff;border:none;border-radius:11px;padding:10px 18px;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:opacity 0.15s;flex-shrink:0;}
+.btn-consol:hover{opacity:0.9;}
+.consol-empty{font-size:12px;color:var(--c5);padding:6px 2px;}
+
 /* ===== LICENSE / SUSPENSION ===== */
 #screen-suspended{align-items:center;justify-content:center;padding:2rem 1rem;position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#E8F5F3 0%,#B2D9D0 40%,#7EC8BC 100%);}
 .suspended-card{background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.9);border-radius:28px;padding:48px 40px;width:100%;max-width:480px;box-shadow:0 20px 70px rgba(23,79,73,0.25);text-align:center;}
@@ -1527,12 +1551,26 @@ body{-webkit-tap-highlight-color:transparent;}
           </div>
           <div id="rt-mosaic"></div>
         </div>
+        <div id="consol-holder"></div>
       </div>
 
     </div>
 
     <!-- TAB: DASHBOARD EXECUTIVO -->
     <div class="admin-tab-panel" id="adm-panel-dashboard">
+      <div class="admin-card">
+        <div class="admin-card-title">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+          Comunicados aos Usuários
+        </div>
+        <div class="create-user-grid">
+          <div class="cu-field"><label class="cu-label">Título</label><input class="cu-input" id="ann-title" placeholder="Ex: Feriado dia 20 — sem ônibus" maxlength="80"></div>
+          <div class="cu-field"><label class="cu-label">Ícone (emoji)</label><input class="cu-input" id="ann-icon" placeholder="📢" maxlength="4"></div>
+        </div>
+        <div class="cu-field" style="margin-top:10px;"><label class="cu-label">Mensagem</label><textarea class="cu-input" id="ann-body" rows="2" placeholder="Detalhes do aviso que aparecerá para todos ao abrir o app" maxlength="300" style="resize:vertical;"></textarea></div>
+        <button class="btn-create-user" onclick="publishAnnouncement()">📢 Publicar comunicado</button>
+        <div style="margin-top:14px;" id="ann-admin-list"></div>
+      </div>
       <div class="admin-card">
         <div class="admin-card-title">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3v18h8V3h-8zM3 21h8v-8H3v8zm0-10h8V3H3v8z"/></svg>
@@ -1882,9 +1920,14 @@ function dbLeaveWaitlist(cpf) { return sb('/waitlist?cpf=eq.' + encodeURICompone
 function dbSaveSwap(s)        { return sb('/swaps', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([{
   id: s.id, from_cpf: s.fromCpf, from_name: s.fromName, from_seat: s.fromSeat,
   to_cpf: s.toCpf, to_name: s.toName, to_seat: s.toSeat, status: s.status }]) }).catch(dbErr); }
+
+function dbSaveAnnouncement(a) { return sb('/announcements', { method:'POST', body: JSON.stringify([a]) }).catch(dbErr); }
+function dbPatchAnnouncement(id, fields) { return sb('/announcements?id=eq.' + id, { method:'PATCH', body: JSON.stringify(fields) }).catch(dbErr); }
+function dbDeleteAnnouncement(id) { return sb('/announcements?id=eq.' + id, { method:'DELETE' }).catch(dbErr); }
 function dbSavePresence(key, active) { return sb('/monitor_presence', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([{ key, active }]) }).catch(dbErr); }
 
 // ── Leitura completa + sincronização do estado ────────────────
+const ANNOUNCEMENTS = []; // comunicados ativos do admin
 let dbRefreshPromise = null;
 let _lastDbSnapshot = '';
 // Hash rápido (djb2) — detecta mudanças sem custo relevante
@@ -1902,7 +1945,7 @@ function dbRefresh() {
 }
 async function _dbRefreshRun() {
   try {
-    const [usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows] = await Promise.all([
+    const [usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows, annRows] = await Promise.all([
       sb('/users?select=*'),
       sb('/tickets?select=*&order=created_at.desc&limit=2000'),
       sb('/waitlist?select=*&order=joined_at.asc'),
@@ -1910,11 +1953,12 @@ async function _dbRefreshRun() {
       sb('/monitor_presence?select=*'),
       sb('/buses?select=*&order=id.asc').catch(() => []),
       sb('/points?select=*&order=h.asc,m.asc').catch(() => []),
+      sb('/announcements?select=*&order=created_at.desc&limit=20').catch(() => []),
     ]);
 
     // Nada mudou desde a última sincronização? Pula todo o retrabalho
     // (rebuilds de estado + re-render custam caro em celulares fracos)
-    const snapshot = _quickHash(JSON.stringify([usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows])) + ':' + (currentUser ? currentUser.cpf : '');
+    const snapshot = _quickHash(JSON.stringify([usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows, annRows])) + ':' + (currentUser ? currentUser.cpf : '');
     if (snapshot === _lastDbSnapshot) { return; }
     _lastDbSnapshot = snapshot;
 
@@ -1929,6 +1973,13 @@ async function _dbRefreshRun() {
       pointRows.forEach(p => POINTS.push({ name: p.name, addr: p.addr, icon: p.icon, h: p.h, m: p.m, active: p.active }));
     }
     populateBusSelects();
+
+    // COMUNICADOS
+    ANNOUNCEMENTS.length = 0;
+    (annRows || []).forEach(a => ANNOUNCEMENTS.push(a));
+    renderAnnouncementBanners();
+    notifyNewAnnouncements();
+    detectBusChanges();
 
     // USUÁRIOS
     Object.keys(USERS).forEach(cpf => delete USERS[cpf]);
@@ -1977,6 +2028,7 @@ async function _dbRefreshRun() {
     presRows.forEach(r => { monitorSeatActive[r.key] = r.active; });
 
     rebuildMonitorSeats(currentBusContext());
+    if (currentUser && currentUser.role === 'passenger') { rebuildUserPassagens(); runNotificationChecks(); }
     refreshVisiblePanels();
   } catch(e) {
     dbOnline = false;
@@ -2877,6 +2929,7 @@ async function loginSuccess(user) {
   document.getElementById('app-user-cpf').textContent = 'CPF: ' + user.cpf;
   document.getElementById('modal-passenger-name').textContent = user.name;
 
+  askNotifPermission();
   // Contexto de seleção sempre limpo no início da sessão
   selectedTravelDays.length = 0;
   selected.clear();
@@ -2885,6 +2938,8 @@ async function loginSuccess(user) {
   await dbRefresh();
   // A sincronização pode ter começado antes do login — reconstrói do cache
   rebuildUserPassagens();
+  runNotificationChecks();
+  renderAnnouncementBanners();
 
   // Já tem passagens ativas? Vai direto para "Minhas Passagens"
   const upcoming = passagens.filter(p => !p.cancelled);
@@ -4953,6 +5008,196 @@ function heatmapHtml(occPeriod, occBus, periodStart, periodEnd) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICAÇÕES INTELIGENTES
+// Usa a Notification API (Android/desktop; iPhone: PWA instalado no iOS 16.4+).
+// Cada aviso dispara UMA vez (controle por chave em localStorage).
+// ═══════════════════════════════════════════════════════════════
+function askNotifPermission() {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      setTimeout(() => Notification.requestPermission().catch(()=>{}), 2500);
+    }
+  } catch(e) {}
+}
+
+function notifyOnce(key, title, body, icon) {
+  try {
+    const store = JSON.parse(localStorage.getItem('place_notified') || '{}');
+    if (store[key]) return;           // já avisado
+    store[key] = Date.now();
+    // Limpa chaves com mais de 30 dias
+    const cutoff = Date.now() - 30 * 86400000;
+    Object.keys(store).forEach(k => { if (store[k] < cutoff) delete store[k]; });
+    localStorage.setItem('place_notified', JSON.stringify(store));
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: key });
+    }
+    showToast(`${title} — ${body}`.slice(0, 140));
+  } catch(e) {}
+}
+
+// Verificações executadas no login e a cada sincronização
+function runNotificationChecks() {
+  if (!currentUser || currentUser.role !== 'passenger') return;
+  const cpf = currentUser.cpf;
+  const cycle = getBookingCycle();
+  const weekKey = cycle.weekMonday.toLocaleDateString('pt-BR');
+  const hasBookingForWeek = passagens.some(p => {
+    if (p.cancelled) return false;
+    const d = parseTicketDate(p.travelDate || '');
+    return d && d >= cycle.weekMonday && d < new Date(cycle.weekMonday.getTime() + 7 * 86400000);
+  });
+
+  // 1. Janela abriu (segunda 08h) e ainda não reservou
+  if (cycle.open && !hasBookingForWeek) {
+    notifyOnce(`open:${weekKey}:${cpf}`, '📅 Reservas abertas!',
+      `A seleção para a semana de ${weekKey.slice(0,5)} está aberta até ${WEEK_CLOSE_LABEL} às ${WEEK_CLOSE_HOUR}h.`);
+  }
+
+  // 2. Último dia (sábado após 12h) e ainda não reservou
+  const now = new Date();
+  if (cycle.open && !hasBookingForWeek && now.getDay() === 6 && now.getHours() >= 12) {
+    notifyOnce(`closing:${weekKey}:${cpf}`, '⏰ Últimas horas!',
+      `As reservas da semana fecham HOJE às ${WEEK_CLOSE_HOUR}h e você ainda não reservou.`);
+  }
+
+  // 3. Lembrete no dia da viagem
+  const today = getTodayStr();
+  const todayTicket = passagens.find(p => !p.cancelled && p.travelDate === today);
+  if (todayTicket) {
+    const bt = getBoardingTime(todayTicket.local);
+    notifyOnce(`trip:${today}:${todayTicket.code}`, '🚌 Hoje você viaja!',
+      `Poltrona ${todayTicket.seat} · ${cleanLocal(todayTicket.local)} às ${String(bt.h).padStart(2,'0')}h${String(bt.m).padStart(2,'0')} · ${todayTicket.busName || ''}`);
+  }
+
+  // 4. Solicitação de troca recebida
+  swapRequests.filter(r => r.status === 'pending' && r.toCpf === cpf).forEach(r => {
+    notifyOnce(`swap:${r.id}`, '🔄 Pedido de troca de poltrona',
+      `${r.fromName} quer trocar a poltrona ${r.fromSeat} pela sua (${r.toSeat}). Responda em Minhas Passagens.`);
+  });
+
+  // 5. Primeiro da lista de espera
+  if (waitlist.length && waitlist[0].cpf === cpf) {
+    notifyOnce(`wait:first:${cpf}:${today}`, '🎯 Você é o próximo da lista!',
+      'Você está em 1º na lista de espera — vagas liberadas serão suas.');
+  }
+}
+
+// 6. Novo comunicado do admin
+function notifyNewAnnouncements() {
+  if (!currentUser) return;
+  ANNOUNCEMENTS.filter(a => a.active !== false).forEach(a => {
+    notifyOnce(`ann:${a.id}`, `${a.icon || '📢'} ${a.title}`, (a.body || '').slice(0, 120));
+  });
+}
+
+// 7. Realocação de ônibus (consolidação): detecta mudança vinda do banco
+function detectBusChanges() {
+  if (!currentUser || currentUser.role !== 'passenger') return;
+  try {
+    const key = 'place_ticket_bus_' + currentUser.cpf;
+    const known = JSON.parse(localStorage.getItem(key) || '{}');
+    passagens.filter(p => !p.cancelled).forEach(p => {
+      if (known[p.code] && known[p.code] !== p.busId) {
+        notifyOnce(`busmoved:${p.code}:${p.busId}`, '🚌 Seu embarque mudou!',
+          `A viagem de ${p.travelDate || ''} agora será no ônibus ${p.busName || p.busId}, poltrona ${p.seat}. Confira em Minhas Passagens.`);
+      }
+      known[p.code] = p.busId;
+    });
+    localStorage.setItem(key, JSON.stringify(known));
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COMUNICADOS — exibição para passageiros e monitores
+// ═══════════════════════════════════════════════════════════════
+function getDismissedAnns() {
+  try { return JSON.parse(localStorage.getItem('place_ann_dismissed_' + (currentUser ? currentUser.cpf : '')) || '[]'); }
+  catch(e) { return []; }
+}
+function dismissAnn(id) {
+  const d = getDismissedAnns();
+  if (!d.includes(id)) d.push(id);
+  localStorage.setItem('place_ann_dismissed_' + (currentUser ? currentUser.cpf : ''), JSON.stringify(d));
+  renderAnnouncementBanners();
+}
+function renderAnnouncementBanners() {
+  const spots = [
+    document.getElementById('screen-app'),
+    document.getElementById('screen-monitor')
+  ];
+  const dismissed = getDismissedAnns();
+  const active = ANNOUNCEMENTS.filter(a => a.active !== false && !dismissed.includes(a.id));
+  spots.forEach(spot => {
+    if (!spot) return;
+    let wrap = spot.querySelector('.announce-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'announce-wrap';
+      spot.prepend(wrap);
+    }
+    wrap.innerHTML = active.map(a => `
+      <div class="announce-banner">
+        <div class="ab-icon">${a.icon || '📢'}</div>
+        <div><div class="ab-title">${escapeHtml(a.title || '')}</div><div class="ab-body">${escapeHtml(a.body || '')}</div></div>
+        <button class="ab-close" onclick="dismissAnn(${a.id})" title="Dispensar">✕</button>
+      </div>`).join('');
+  });
+}
+
+// ═══ Admin: gestão de comunicados (card no Dashboard) ═══
+function renderAnnouncementsAdmin() {
+  const el = document.getElementById('ann-admin-list');
+  if (!el) return;
+  el.innerHTML = ANNOUNCEMENTS.length === 0
+    ? '<div class="consol-empty">Nenhum comunicado publicado.</div>'
+    : ANNOUNCEMENTS.map(a => `
+      <div class="announce-item ${a.active === false ? 'inactive' : ''}">
+        <div>
+          <div class="ai-title">${a.icon || '📢'} ${escapeHtml(a.title || '')}</div>
+          <div class="ai-body">${escapeHtml(a.body || '')}</div>
+          <div class="ai-meta">${new Date(a.created_at).toLocaleString('pt-BR')} ${a.active === false ? '· <b>desativado</b>' : '· visível a todos'}</div>
+        </div>
+        <div class="ai-actions">
+          <button class="btn-edit-user" onclick="toggleAnnouncement(${a.id}, ${a.active === false})">${a.active === false ? '▶️' : '⏸️'}</button>
+          <button class="btn-delete-user" onclick="removeAnnouncement(${a.id})">🗑️</button>
+        </div>
+      </div>`).join('');
+}
+async function publishAnnouncement() {
+  const title = document.getElementById('ann-title').value.trim();
+  const body = document.getElementById('ann-body').value.trim();
+  const icon = document.getElementById('ann-icon').value.trim() || '📢';
+  if (!title) { showToast('Dê um título ao comunicado.'); return; }
+  await dbSaveAnnouncement({ title, body, icon, active: true, author: currentUser ? currentUser.name : 'Admin' });
+  document.getElementById('ann-title').value = '';
+  document.getElementById('ann-body').value = '';
+  document.getElementById('ann-icon').value = '';
+  _lastDbSnapshot = ''; // força reprocessamento
+  await dbRefresh();
+  renderAnnouncementsAdmin();
+  showToast('📢 Comunicado publicado — todos verão ao abrir o app.');
+}
+function toggleAnnouncement(id, activate) {
+  dbPatchAnnouncement(id, { active: !!activate });
+  const a = ANNOUNCEMENTS.find(x => x.id === id);
+  if (a) a.active = !!activate;
+  renderAnnouncementsAdmin();
+  renderAnnouncementBanners();
+}
+function removeAnnouncement(id) {
+  if (!window.confirm('Excluir este comunicado?')) return;
+  dbDeleteAnnouncement(id);
+  const idx = ANNOUNCEMENTS.findIndex(x => x.id === id);
+  if (idx >= 0) ANNOUNCEMENTS.splice(idx, 1);
+  renderAnnouncementsAdmin();
+  renderAnnouncementBanners();
+}
+
 // ---- OCUPAÇÃO EM TEMPO REAL (admin) ----
 function rtWeekOptions() {
   // Semana operacional atual (seg→dom) + semana em reserva (próxima)
@@ -5073,6 +5318,7 @@ function renderRealtimeOcc() {
           ${rtMosaicGrid(r.seatState, true)}
         </div>`).join('') +
       `</div>` + legend;
+    renderConsolidation();
     return;
   }
 
@@ -5092,6 +5338,127 @@ function renderRealtimeOcc() {
      <span class="rt-count rtc-free">🪑 ${r.free} livres</span>
      <span class="rt-count rtc-mon">⭐ ${r.monCount} monitor(es)</span>`;
   document.getElementById('rt-mosaic').innerHTML = rtMosaicGrid(r.seatState, false) + legend;
+  renderConsolidation();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// CONSOLIDAÇÃO INTELIGENTE DE LINHAS
+// Analisa o dia selecionado e sugere fundir viagens com baixa ocupação.
+// Aplicar: realoca as passagens no banco e publica comunicado automático.
+// ═══════════════════════════════════════════════════════════════
+function computeConsolidations(day) {
+  const stats = BUSES.map(b => {
+    const r = computeBusOcc(day, b.id);
+    return { bus: b, taken: r.reserved + r.boarded, capacity: r.capacity, boarded: r.boarded };
+  }).filter(s => s.taken > 0);
+
+  const suggestions = [];
+  // Ordena da menos ocupada para a mais ocupada e tenta fusões em pares
+  const sorted = [...stats].sort((a, b) => a.taken - b.taken);
+  const used = new Set();
+  for (let i = 0; i < sorted.length; i++) {
+    if (used.has(sorted[i].bus.id)) continue;
+    for (let j = sorted.length - 1; j > i; j--) {
+      if (used.has(sorted[j].bus.id)) continue;
+      const small = sorted[i], big = sorted[j];
+      // Cabem juntas no veículo da linha mais cheia?
+      if (small.taken + big.taken <= big.capacity) {
+        suggestions.push({ from: small, to: big, total: small.taken + big.taken });
+        used.add(small.bus.id); used.add(big.bus.id);
+        break;
+      }
+    }
+  }
+  return suggestions;
+}
+
+function renderConsolidation() {
+  const daySel = document.getElementById('rt-day-filter');
+  const holder = document.getElementById('consol-holder');
+  if (!daySel || !holder) return;
+  const day = daySel.value;
+  if (!day) { holder.innerHTML = ''; return; }
+
+  // Só sugere para dias futuros (hoje o ônibus já saiu/está saindo)
+  const dayD = parseTicketDate(day);
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  if (!dayD || dayD <= today0) {
+    holder.innerHTML = `<div class="consol-card"><div class="consol-title">💡 Sugestões de Consolidação</div><div class="consol-empty">Disponível apenas para dias futuros — as viagens de hoje já estão em operação.</div></div>`;
+    return;
+  }
+
+  const sugs = computeConsolidations(day);
+  if (sugs.length === 0) {
+    holder.innerHTML = `<div class="consol-card"><div class="consol-title">💡 Sugestões de Consolidação</div><div class="consol-empty">Nenhuma fusão possível em ${day.slice(0,5)} — as linhas com reservas não cabem juntas num só veículo (ou só uma linha tem reservas).</div></div>`;
+    return;
+  }
+
+  holder.innerHTML = `<div class="consol-card">
+    <div class="consol-title">💡 Sugestões de Consolidação — ${day.slice(0,5)}</div>
+    ${sugs.map((s, i) => `
+      <div class="consol-item">
+        <div class="consol-desc">
+          Fundir <strong>${s.from.bus.name}</strong> (${s.from.taken} passageiro${s.from.taken>1?'s':''})
+          → <strong>${s.to.bus.name}</strong> (${s.to.taken} a bordo).
+          Resultado: <strong>${s.total}/${s.to.capacity}</strong> lugares.
+          <div class="consol-save">💰 Economia: 1 ônibus a menos neste dia</div>
+        </div>
+        <button class="btn-consol" onclick="applyConsolidation('${day}','${s.from.bus.id}','${s.to.bus.id}')">Aplicar fusão</button>
+      </div>`).join('')}
+    <div class="consol-empty" style="margin-top:4px;">Ao aplicar: as passagens são realocadas mantendo a poltrona quando livre; os passageiros são avisados por comunicado e notificação. Monitores da linha de origem devem ser realocados manualmente em Gestão de Usuários, se necessário.</div>
+  </div>`;
+}
+
+async function applyConsolidation(day, fromId, toId) {
+  const fromBus = BUSES.find(b => b.id === fromId) || { name: fromId };
+  const toBus = BUSES.find(b => b.id === toId) || { name: toId };
+  const moving = allPassagens.filter(t => !t.cancelled && t.busId === fromId &&
+    (t.travelDate || (t.date ? t.date.slice(0,10) : null)) === day);
+  if (moving.length === 0) { showToast('Nada a mover — atualize a tela.'); return; }
+
+  if (!window.confirm(`Fundir as viagens de ${day.slice(0,5)}?\n\n${moving.length} passageiro(s) da linha ${fromBus.name} serão realocados para a ${toBus.name}.\nPoltronas são mantidas quando livres; ocupadas recebem a menor poltrona disponível.\n\nOs passageiros serão avisados automaticamente.`)) return;
+
+  // Poltronas já ocupadas no destino + monitores do destino
+  const destOcc = new Set();
+  allPassagens.forEach(t => {
+    if (t.cancelled || t.busId !== toId) return;
+    if ((t.travelDate || (t.date ? t.date.slice(0,10) : null)) !== day) return;
+    String(t.seat).split(',').map(x => parseInt(x.trim())).forEach(n => { if (!isNaN(n)) destOcc.add(n); });
+  });
+  Object.values(USERS).filter(u => u.role === 'monitor' && u.busId === toId && u.seat).forEach(u => destOcc.add(u.seat));
+
+  let movedKept = 0, movedReseated = 0;
+  for (const t of moving) {
+    const seats = String(t.seat).split(',').map(x => parseInt(x.trim())).filter(n => !isNaN(n));
+    const newSeats = [];
+    for (const s of seats) {
+      if (!destOcc.has(s)) { newSeats.push(s); destOcc.add(s); movedKept++; }
+      else {
+        let ns = 1; while (destOcc.has(ns) && ns <= 46) ns++;
+        newSeats.push(ns); destOcc.add(ns); movedReseated++;
+      }
+    }
+    const newSeatStr = newSeats.join(', ');
+    // Atualiza cache local + banco
+    t.busId = toId; t.busName = toBus.name; t.seat = newSeatStr;
+    const pIdx = passagens.findIndex(p => p.code === t.code);
+    if (pIdx >= 0) { passagens[pIdx].busId = toId; passagens[pIdx].busName = toBus.name; passagens[pIdx].seat = newSeatStr; }
+    await dbPatchTicket(t.code, { bus_id: toId, bus_name: toBus.name, seat: newSeatStr });
+  }
+
+  // Comunicado automático a todos
+  await dbSaveAnnouncement({
+    title: `Viagem de ${day.slice(0,5)}: linhas unificadas`,
+    body: `Passageiros da linha ${fromBus.name} foram realocados para a ${toBus.name} no dia ${day.slice(0,5)}. Poltronas mantidas quando possível — confira a sua em Minhas Passagens.`,
+    icon: '🚌', active: true, author: 'Sistema (consolidação)'
+  });
+
+  _lastDbSnapshot = '';
+  await dbRefresh();
+  renderRealtimeOcc();
+  renderConsolidation();
+  showToast(`✅ Fusão aplicada: ${moving.length} passagem(ns) movida(s) para ${toBus.name} (${movedKept} mantiveram a poltrona, ${movedReseated} reatribuída(s)). 1 ônibus economizado! 💰`);
 }
 
 // ---- RESUMO PÓS-VIAGEM ----
@@ -5225,7 +5592,7 @@ function switchAdminTab(tab) {
   if (tab === 'relacao') renderAdminTable();
   if (tab === 'ocupacao') renderOccupancyCharts();
   if (tab === 'tempo') renderRealtimeOcc();
-  if (tab === 'dashboard') renderDashboard();
+  if (tab === 'dashboard') { renderDashboard(); renderAnnouncementsAdmin(); }
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
   if (tab === 'linhas') renderLinhasPontos();
