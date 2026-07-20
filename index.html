@@ -822,6 +822,7 @@ body{-webkit-tap-highlight-color:transparent;}
 </head>
 <body>
 
+
 <!-- ===== LICENSE CHECK OVERLAY ===== -->
 <div class="license-checking" id="license-checking">
   <div class="license-spinner"></div>
@@ -1576,6 +1577,7 @@ body{-webkit-tap-highlight-color:transparent;}
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3v18h8V3h-8zM3 21h8v-8H3v8zm0-10h8V3H3v8z"/></svg>
           Dashboard Executivo Mensal
         </div>
+        <div id="migration-progress" style="margin-bottom:16px;"></div>
         <div id="dashboard-content"><div class="admin-empty">Carregando...</div></div>
       </div>
 
@@ -1864,21 +1866,93 @@ body{-webkit-tap-highlight-color:transparent;}
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE — BANCO DE DADOS CENTRAL (dados compartilhados entre dispositivos)
 // ═══════════════════════════════════════════════════════════════
-const SB_URL  = 'https://mqkyqlconpldxcnviepy.supabase.co/rest/v1';
+const SB_BASE = 'https://mqkyqlconpldxcnviepy.supabase.co';
+const SB_URL  = SB_BASE + '/rest/v1';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xa3lxbGNvbnBsZHhjbnZpZXB5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MjM0MDcsImV4cCI6MjA5OTA5OTQwN30.KUOqiCq8as7IJFGcG006rWsY1CJhQxbKLLuU5q3v7LE';
 let dbOnline = false; // indica se a última operação com o banco funcionou
 
-async function sb(path, options = {}) {
+// ═══════════════════════════════════════════════════════════════
+// FASE 1-2 DA MIGRAÇÃO — AUTENTICAÇÃO SUPABASE AUTH (ponte)
+// Login tenta o Auth; conta inexistente → Edge Function provision-user
+// migra na hora (confere hash legado no servidor) → tenta de novo.
+// Toda chamada ao banco passa a levar o token JWT do usuário (crachá).
+// ═══════════════════════════════════════════════════════════════
+let authSession = null; // { access_token, refresh_token, expires_at, user }
+
+function authSaveSession(s) {
+  authSession = s;
+  try { localStorage.setItem('place_auth_session', JSON.stringify(s)); } catch(e) {}
+}
+function authLoadSession() {
+  try { authSession = JSON.parse(localStorage.getItem('place_auth_session') || 'null'); } catch(e) { authSession = null; }
+}
+function authClearSession() {
+  authSession = null;
+  try { localStorage.removeItem('place_auth_session'); } catch(e) {}
+}
+
+async function authRequest(path, body) {
+  const res = await fetch(SB_BASE + path, {
+    method: 'POST',
+    headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
+}
+
+function cpfToEmail(cpf) { return String(cpf).replace(/\D/g, '') + '@place.local'; }
+
+// Login com ponte de migração automática
+async function authLogin(cpf, password) {
+  const email = cpfToEmail(cpf);
+
+  // 1ª tentativa: conta já migrada?
+  let r = await authRequest('/auth/v1/token?grant_type=password', { email, password });
+  if (r.ok) return { ok: true, session: r.data };
+
+  // Conta não existe/credencial inválida → aciona a ponte (Edge Function)
+  const p = await authRequest('/functions/v1/provision-user', { cpf, password });
+  if (p.ok && (p.data.migrated || p.data.already_migrated || p.data.relinked)) {
+    // Migrado agora (ou elo reparado) → 2ª tentativa
+    r = await authRequest('/auth/v1/token?grant_type=password', { email, password });
+    if (r.ok) return { ok: true, session: r.data, justMigrated: !!p.data.migrated };
+    return { ok: false, reason: 'auth_after_provision', detail: r.data };
+  }
+  if (p.status === 401) return { ok: false, reason: 'bad_credentials' };
+  if (p.status === 404) return { ok: false, reason: 'not_found' };
+  return { ok: false, reason: 'provision_unavailable', detail: p.data };
+}
+
+// Renovação do token (expira ~1h)
+async function authRefresh() {
+  if (!authSession || !authSession.refresh_token) return false;
+  const r = await authRequest('/auth/v1/token?grant_type=refresh_token', { refresh_token: authSession.refresh_token });
+  if (r.ok) { authSaveSession(r.data); return true; }
+  authClearSession();
+  return false;
+}
+setInterval(() => { if (authSession && !document.hidden) authRefresh(); }, 50 * 60000);
+authLoadSession();
+
+
+async function sb(path, options = {}, _retried) {
+  const token = authSession && authSession.access_token ? authSession.access_token : SB_KEY;
   const res = await fetch(SB_URL + path, {
     ...options,
     headers: {
       'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
+      'Authorization': 'Bearer ' + token,
       'Content-Type': 'application/json',
       'Prefer': options.prefer || 'return=minimal',
       ...(options.headers || {})
     }
   });
+  // Token expirado no meio do uso → renova uma vez e repete a chamada
+  if (res.status === 401 && authSession && !_retried) {
+    const renewed = await authRefresh();
+    if (renewed) return sb(path, options, true);
+  }
   if (!res.ok) throw new Error('DB ' + res.status + ' ' + (await res.text()).slice(0, 120));
   dbOnline = true;
   if ((options.method || 'GET') === 'GET' || (options.prefer || '').includes('representation')) {
@@ -1894,6 +1968,7 @@ function rowToUser(r) {
   if (r.seat) u.seat = r.seat;
   if (r.bus_id) u.busId = r.bus_id;
   if (r.custom) u.custom = true;
+  if (r.auth_id) u.authId = r.auth_id;
   return u;
 }
 function userToRow(u) {
@@ -2933,15 +3008,35 @@ function maskCPF(el) {
 async function doLogin() {
   const cpf = document.getElementById('login-cpf').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
-  // Garante base atualizada do banco antes de validar (login de qualquer dispositivo)
-  if (!USERS[cpf]) { showToast('Verificando...'); await dbRefresh(); }
+  if (!cpf || !pass) { showToast('Preencha CPF e senha.'); return; }
+  showToast('Verificando...');
+
+  // ═══ PONTE AUTH: autentica no servidor (migra a conta se necessário) ═══
+  const auth = await authLogin(cpf, pass);
+  if (auth.ok) {
+    authSaveSession(auth.session);
+    if (auth.justMigrated) console.log('[Auth] Conta migrada para o Supabase Auth ✅');
+  } else if (auth.reason === 'bad_credentials') {
+    showToast('CPF ou senha incorretos'); return;
+  } else if (auth.reason === 'not_found') {
+    showToast('CPF não cadastrado. Fale com a administração.'); return;
+  } else {
+    // Edge Function fora do ar / erro inesperado → login legado (janela de transição)
+    console.warn('[Auth] ponte indisponível (' + auth.reason + '), usando login legado');
+    showToast('⚠️ Autenticação em modo de transição.');
+  }
+
+  // Base atualizada + validação legada (dupla verificação durante a ponte)
+  if (!USERS[cpf]) { await dbRefresh(); }
   const user = USERS[cpf];
-  if (!user || !(await verifyPass(pass, user.pass))) { showToast('CPF ou senha incorretos'); return; }
-  // Migração transparente: conta antiga (texto puro) ganha hash no 1º login correto
+  if (!user || (!authSession && !(await verifyPass(pass, user.pass)))) { showToast('CPF ou senha incorretos'); return; }
+  // Conta antiga em texto puro ganha hash no 1º login correto
+  // (sob as políticas estritas, a gravação pode ser negada para passageiros —
+  //  sem problema: a senha real já está protegida no Auth; silencioso de propósito)
   if (!String(user.pass).startsWith('sha256:')) {
     user.pass = await hashPass(pass);
     persistUsers();
-    dbSaveUser(user);
+    sb('/users?cpf=eq.' + encodeURIComponent(user.cpf), { method: 'PATCH', body: JSON.stringify({ pass: user.pass }) }).catch(() => {});
   }
   // External block list (controlled by the vendor's license file)
   if (licenseBlockedCpfs.includes(cpf)) {
@@ -3001,6 +3096,7 @@ function doLogout() {
   if (monScanReader) { try { monScanReader.stop().catch(()=>{}); } catch(e){} monScanReader = null; }
   boardedSeats.clear();
   currentUser = null; selected.clear();
+  authClearSession();
   // Zera o contexto de reserva — nada vaza para o próximo usuário deste aparelho
   selectedTravelDays.length = 0;
   selectedBus = null;
@@ -3721,9 +3817,9 @@ function respondSwap(id, accept) {
 }
 
 
-function executeSwap(req) {
+async function executeSwap(req) {
   req.status = 'accepted';
-  dbSaveSwap(req);
+  await dbSaveSwap(req);
   // Swap in occupied map
   const nameA = occupied.get(req.fromSeat);
   const nameB = occupied.get(req.toSeat);
@@ -5288,6 +5384,21 @@ function updateBackupInfo() {
   el.textContent = last ? `Último backup neste aparelho: ${last}` : 'Nenhum backup registrado neste aparelho ainda — recomendado ao menos 1x por semana.';
 }
 
+
+// Progresso da migração Auth (Fase 1): quantos usuários já têm conta
+function renderMigrationProgress() {
+  const el = document.getElementById('migration-progress');
+  if (!el) return;
+  const all = Object.values(USERS);
+  const migrated = all.filter(u => u.authId).length;
+  const pct = all.length ? Math.round((migrated / all.length) * 100) : 0;
+  el.innerHTML = `<div class="chart-section" style="margin-bottom:0;">
+    <div class="chart-title">🌉 Migração para autenticação segura</div>
+    <div class="rt-bar" style="margin:8px 0 8px;"><div class="rt-bar-fill" style="width:${pct}%"></div></div>
+    <div style="font-size:12px;color:var(--c5);">${migrated} de ${all.length} usuários migrados (${pct}%) — a migração acontece sozinha no primeiro login de cada um.</div>
+  </div>`;
+}
+
 // ---- OCUPAÇÃO EM TEMPO REAL (admin) ----
 function rtWeekOptions() {
   // Semana operacional atual (seg→dom) + semana em reserva (próxima)
@@ -5682,7 +5793,7 @@ function switchAdminTab(tab) {
   if (tab === 'relacao') renderAdminTable();
   if (tab === 'ocupacao') renderOccupancyCharts();
   if (tab === 'tempo') renderRealtimeOcc();
-  if (tab === 'dashboard') { renderDashboard(); renderAnnouncementsAdmin(); updateBackupInfo(); }
+  if (tab === 'dashboard') { renderDashboard(); renderAnnouncementsAdmin(); updateBackupInfo(); renderMigrationProgress(); }
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
   if (tab === 'linhas') renderLinhasPontos();
