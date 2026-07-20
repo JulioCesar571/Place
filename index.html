@@ -1578,6 +1578,16 @@ body{-webkit-tap-highlight-color:transparent;}
         </div>
         <div id="dashboard-content"><div class="admin-empty">Carregando...</div></div>
       </div>
+
+      <div class="admin-card">
+        <div class="admin-card-title">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+          Backup Completo do Banco
+        </div>
+        <div class="bulk-hint">Exporta todas as 10 tabelas (usuários, passagens, histórico, resumos, linhas, comunicados...) em um arquivo .json. Guarde-o fora do sistema — é sua proteção contra perda de dados, já que o plano gratuito do Supabase não faz backups automáticos.</div>
+        <button class="btn-create-user" id="btn-full-backup" onclick="exportFullBackup()">🛡️ Exportar backup completo (.json)</button>
+        <div class="ai-meta" id="backup-last-info" style="margin-top:10px;"></div>
+      </div>
     </div>
 
     <!-- TAB: LINHAS & PONTOS -->
@@ -1909,6 +1919,7 @@ const dbErr = e => { dbOnline = false; console.warn('DB:', e.message); showToast
 function dbSaveUser(u)        { return sb('/users', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([userToRow(u)]) }).catch(dbErr); }
 function dbDeleteUser(cpf)    { return sb('/users?cpf=eq.' + encodeURIComponent(cpf), { method: 'DELETE' }).catch(dbErr); }
 function dbInsertTicket(t)    { return sb('/tickets', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([ticketToRow(t)]) }).catch(dbErr); }
+function dbInsertTicketStrict(t) { return sb('/tickets', { method: 'POST', prefer: 'resolution=merge-duplicates', body: JSON.stringify([ticketToRow(t)]) }); }
 function dbPatchTicket(code, fields) { return sb('/tickets?code=eq.' + encodeURIComponent(code), { method: 'PATCH', body: JSON.stringify(fields) }).catch(dbErr); }
 function dbInsertHistory(cpf, h) {
   return sb('/history', { method: 'POST', prefer: 'resolution=ignore-duplicates', body: JSON.stringify([{
@@ -2265,6 +2276,23 @@ function loadScriptOnce(url) {
 }
 const LIB_HTML5QR = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
 const LIB_XLSX    = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+
+// ═══════════════════════════════════════════════════════════════
+// SEGURANÇA NÍVEL 1 — SENHAS COM HASH (SHA-256)
+// Senhas nunca mais são gravadas em texto puro no banco.
+// Contas antigas migram automaticamente no primeiro login correto.
+// ═══════════════════════════════════════════════════════════════
+async function hashPass(plain) {
+  const data = new TextEncoder().encode('place-v1:' + plain);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return 'sha256:' + [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function verifyPass(typed, stored) {
+  if (!stored) return false;
+  if (stored.startsWith('sha256:')) return (await hashPass(typed)) === stored;
+  return typed === stored; // conta legada (texto puro)
+}
 
 // ---- STATE ----
 const USERS = {
@@ -2908,7 +2936,13 @@ async function doLogin() {
   // Garante base atualizada do banco antes de validar (login de qualquer dispositivo)
   if (!USERS[cpf]) { showToast('Verificando...'); await dbRefresh(); }
   const user = USERS[cpf];
-  if (!user || user.pass !== pass) { showToast('CPF ou senha incorretos'); return; }
+  if (!user || !(await verifyPass(pass, user.pass))) { showToast('CPF ou senha incorretos'); return; }
+  // Migração transparente: conta antiga (texto puro) ganha hash no 1º login correto
+  if (!String(user.pass).startsWith('sha256:')) {
+    user.pass = await hashPass(pass);
+    persistUsers();
+    dbSaveUser(user);
+  }
   // External block list (controlled by the vendor's license file)
   if (licenseBlockedCpfs.includes(cpf)) {
     showScreen('blocked');
@@ -3127,7 +3161,7 @@ function updateUI() {
 }
 
 // ---- CONFIRM SEATS → TICKET ----
-function confirmSeats() {
+async function confirmSeats() {
   if(!currentUser) return;
   if (getPriority(currentUser) === 'blocked') { showScreen('blocked'); return; }
   if (selectedTravelDays.length === 0) { showToast('Selecione os dias de viagem primeiro.'); showWeekScreen(); return; }
@@ -3150,9 +3184,10 @@ function confirmSeats() {
     return;
   }
 
-  // Um ticket por dia de viagem
+  // Um ticket por dia de viagem — o banco valida conflito de poltrona (trigger)
   const createdTickets = [];
-  selectedTravelDays.forEach(day => {
+  const failedDays = [];
+  for (const day of selectedTravelDays) {
     const code = 'PDS-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-' + firstNum;
     const t = {
       passenger: currentUser.name,
@@ -3168,11 +3203,23 @@ function confirmSeats() {
       bus: 'Place',
       valid: true
     };
-    passagens.push({...t});
-    allPassagens.push({...t});
-    dbInsertTicket(t);
-    createdTickets.push(t);
-  });
+    try {
+      await dbInsertTicketStrict(t);
+      passagens.push({...t});
+      allPassagens.push({...t});
+      createdTickets.push(t);
+    } catch(err) {
+      if (String(err.message).includes('SEAT_TAKEN')) failedDays.push(day);
+      else { dbErr(err); passagens.push({...t}); allPassagens.push({...t}); createdTickets.push(t); }
+    }
+  }
+
+  if (failedDays.length) {
+    showToast(`⚠️ Poltrona ocupada por outra pessoa em: ${failedDays.map(d=>d.slice(0,5)).join(', ')}. Dias restantes confirmados — escolha outra poltrona para esses.`);
+    _lastDbSnapshot = '';
+    dbRefresh();
+  }
+  if (createdTickets.length === 0) { buildCabin(); updateUI(); return; }
 
   currentTicket = createdTickets[0];
   nums.forEach(num => { selected.delete(num); });
@@ -4378,7 +4425,7 @@ function getInitials(name) {
   return (parts[0][0] + (parts.length > 1 ? parts[parts.length-1][0] : '')).toUpperCase();
 }
 
-function createUser() {
+async function createUser() {
   const name = document.getElementById('cu-name').value.trim();
   const cpf  = document.getElementById('cu-cpf').value.trim();
   const pass = document.getElementById('cu-pass').value.trim();
@@ -4395,7 +4442,7 @@ function createUser() {
   if (pass.length < 4) { passInput.classList.add('invalid'); cuShowError('A senha deve ter no mínimo 4 caracteres.'); return; }
 
   const newUser = {
-    name, cpf, pass,
+    name, cpf, pass: await hashPass(pass),
     initials: getInitials(name),
     role,
     custom: true
@@ -4461,9 +4508,10 @@ function normalizePriority(raw) {
 }
 
 // Processa linhas [nome, cpf, senha, perfil, prioridade] → cria usuários, retorna resumo
-function processUserRows(rows) {
+async function processUserRows(rows) {
   const created = [], skipped = [];
-  rows.forEach((row, idx) => {
+  for (let idx = 0; idx < rows.length; idx++) {
+    const row = rows[idx];
     const line = idx + 1;
     const name = String(row[0] || '').trim();
     const cpf = normalizeCpf(row[1]);
@@ -4472,14 +4520,14 @@ function processUserRows(rows) {
     const role = roleRaw.includes('monitor') ? 'monitor' : 'passenger';
     const priority = normalizePriority(row[4]);
 
-    if (!name && !row[1]) return; // linha vazia — ignora silenciosamente
-    if (name.length < 3) { skipped.push(`Linha ${line}: nome inválido`); return; }
-    if (!cpf) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): CPF inválido`); return; }
-    if (USERS[cpf]) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): CPF já cadastrado`); return; }
+    if (!name && !row[1]) continue; // linha vazia — ignora silenciosamente
+    if (name.length < 3) { skipped.push(`Linha ${line}: nome inválido`); continue; }
+    if (!cpf) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): CPF inválido`); continue; }
+    if (USERS[cpf]) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): CPF já cadastrado`); continue; }
     if (!pass) pass = cpf.replace(/\D/g, '').slice(-4); // últimos 4 dígitos
-    if (pass.length < 4) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): senha muito curta`); return; }
+    if (pass.length < 4) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): senha muito curta`); continue; }
 
-    const u = { name, cpf, pass, initials: getInitials(name), role, custom: true };
+    const u = { name, cpf, pass: await hashPass(pass), initials: getInitials(name), role, custom: true };
     if (role === 'passenger') { u.priority = priority; }
     else {
       let assigned = false;
@@ -4487,12 +4535,12 @@ function processUserRows(rows) {
         const freeSeat = nextFreeMonitorSeat(b.id);
         if (freeSeat) { u.seat = freeSeat; u.busId = b.id; assigned = true; break; }
       }
-      if (!assigned) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): sem poltrona livre para monitor em nenhuma linha`); return; }
+      if (!assigned) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): sem poltrona livre para monitor em nenhuma linha`); continue; }
     }
     USERS[cpf] = u; // registra antes do próximo cálculo de poltrona livre
     dbSaveUser(u);
     created.push(name.split(' ')[0] + ' (' + cpf + ')');
-  });
+  }
   if (created.length) { persistUsers(); rebuildMonitorSeats(); }
   return { created, skipped };
 }
@@ -4542,7 +4590,7 @@ async function handleImportFile(input) {
     }
     // Remove cabeçalho se a 1ª linha contiver "nome" ou "cpf"
     if (rows.length && String(rows[0].join(' ')).toLowerCase().match(/nome|cpf/)) rows = rows.slice(1);
-    showImportResult('import-result', processUserRows(rows));
+    processUserRows(rows).then(res => showImportResult('import-result', res));
     input.value = '';
   };
   if (ext === 'csv') reader.readAsText(file, 'UTF-8');
@@ -4620,7 +4668,8 @@ function openEditUser(cpf) {
   editingCpf = cpf;
   document.getElementById('eu-name').value = u.name;
   document.getElementById('eu-cpf').value = u.cpf;
-  document.getElementById('eu-pass').value = u.pass;
+  document.getElementById('eu-pass').value = '';
+  document.getElementById('eu-pass').placeholder = 'Deixe em branco para manter a senha atual';
   document.getElementById('eu-role').value = u.role;
   document.getElementById('eu-priority').value = u.priority || 'p2';
   document.getElementById('eu-bus').value = u.busId || '7515';
@@ -4649,7 +4698,7 @@ function euShowError(msg) {
   setTimeout(() => el.classList.remove('show'), 4500);
 }
 
-function saveEditUser() {
+async function saveEditUser() {
   if (!editingCpf) return;
   const orig = USERS[editingCpf];
   const name = document.getElementById('eu-name').value.trim();
@@ -4660,9 +4709,10 @@ function saveEditUser() {
   if (name.length < 3) { euShowError('Informe o nome completo (mínimo 3 caracteres).'); return; }
   if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(newCpf)) { euShowError('CPF inválido. Use o formato 000.000.000-00.'); return; }
   if (newCpf !== editingCpf && USERS[newCpf]) { euShowError('Já existe outro usuário com este CPF.'); return; }
-  if (pass.length < 4) { euShowError('A senha deve ter no mínimo 4 caracteres.'); return; }
+  if (pass && pass.length < 4) { euShowError('A nova senha deve ter no mínimo 4 caracteres (ou deixe em branco para manter).'); return; }
 
-  const updated = { ...orig, name, cpf: newCpf, pass, initials: getInitials(name), role };
+  const finalPass = pass ? await hashPass(pass) : orig.pass;
+  const updated = { ...orig, name, cpf: newCpf, pass: finalPass, initials: getInitials(name), role };
 
   if (role === 'monitor') {
     const busId = document.getElementById('eu-bus').value;
@@ -5198,6 +5248,46 @@ function removeAnnouncement(id) {
   renderAnnouncementBanners();
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// SEGURANÇA NÍVEL 1 — BACKUP COMPLETO DO BANCO
+// Exporta as 10 tabelas em um único .json (guarda fora do sistema).
+// ═══════════════════════════════════════════════════════════════
+const BACKUP_TABLES = ['users','tickets','history','waitlist','swaps','monitor_presence','trip_reports','buses','points','announcements'];
+
+async function exportFullBackup() {
+  const btn = document.getElementById('btn-full-backup');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exportando banco...'; }
+  try {
+    const data = { _meta: { system: 'Place', exportedAt: new Date().toISOString(), by: currentUser ? currentUser.name : 'admin', tables: BACKUP_TABLES.length } };
+    for (const t of BACKUP_TABLES) {
+      data[t] = await sb('/' + t + '?select=*');
+    }
+    const totalRows = BACKUP_TABLES.reduce((s, t) => s + (data[t] ? data[t].length : 0), 0);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,16).replace('T','_').replace(':','h');
+    a.href = URL.createObjectURL(blob);
+    a.download = `place_backup_completo_${stamp}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    localStorage.setItem('place_last_full_backup', new Date().toLocaleString('pt-BR'));
+    updateBackupInfo();
+    showToast(`🛡️ Backup completo exportado: ${totalRows} registros de ${BACKUP_TABLES.length} tabelas.`);
+  } catch(e) {
+    showToast('⚠️ Falha no backup: ' + e.message + ' — verifique a conexão.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🛡️ Exportar backup completo (.json)'; }
+  }
+}
+
+function updateBackupInfo() {
+  const el = document.getElementById('backup-last-info');
+  if (!el) return;
+  const last = localStorage.getItem('place_last_full_backup');
+  el.textContent = last ? `Último backup neste aparelho: ${last}` : 'Nenhum backup registrado neste aparelho ainda — recomendado ao menos 1x por semana.';
+}
+
 // ---- OCUPAÇÃO EM TEMPO REAL (admin) ----
 function rtWeekOptions() {
   // Semana operacional atual (seg→dom) + semana em reserva (próxima)
@@ -5592,7 +5682,7 @@ function switchAdminTab(tab) {
   if (tab === 'relacao') renderAdminTable();
   if (tab === 'ocupacao') renderOccupancyCharts();
   if (tab === 'tempo') renderRealtimeOcc();
-  if (tab === 'dashboard') { renderDashboard(); renderAnnouncementsAdmin(); }
+  if (tab === 'dashboard') { renderDashboard(); renderAnnouncementsAdmin(); updateBackupInfo(); }
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
   if (tab === 'linhas') renderLinhasPontos();
