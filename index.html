@@ -1925,6 +1925,27 @@ async function authLogin(cpf, password) {
 }
 
 // Renovação do token (expira ~1h)
+
+// Fase 5: redefine a senha de um usuário MIGRADO (via Edge Function, só admin)
+async function adminResetPassword(cpf, newPass) {
+  try {
+    const res = await fetch(SB_BASE + '/functions/v1/admin-reset-password', {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + (authSession ? authSession.access_token : SB_KEY),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ cpf, password: newPass })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true };
+    return { ok: false, reason: data.error || ('http_' + res.status) };
+  } catch(e) {
+    return { ok: false, reason: 'network' };
+  }
+}
+
 async function authRefresh() {
   if (!authSession || !authSession.refresh_token) return false;
   const r = await authRequest('/auth/v1/token?grant_type=refresh_token', { refresh_token: authSession.refresh_token });
@@ -4808,6 +4829,13 @@ async function saveEditUser() {
   if (pass && pass.length < 4) { euShowError('A nova senha deve ter no mínimo 4 caracteres (ou deixe em branco para manter).'); return; }
 
   const finalPass = pass ? await hashPass(pass) : orig.pass;
+  // Conta já migrada para o Auth? A senha REAL vive lá — redefine no servidor
+  if (pass && orig.authId) {
+    const r = await adminResetPassword(editingCpf, pass);
+    if (r.ok) showToast('🔑 Senha redefinida no sistema de autenticação.');
+    else if (r.reason === 'not_migrated') { /* segue só o caminho legado */ }
+    else { euShowError('Falha ao redefinir a senha no servidor (' + r.reason + '). Verifique a função admin-reset-password.'); return; }
+  }
   const updated = { ...orig, name, cpf: newCpf, pass: finalPass, initials: getInitials(name), role };
 
   if (role === 'monitor') {
