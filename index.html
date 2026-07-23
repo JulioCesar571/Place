@@ -3671,6 +3671,13 @@ function acceptWaitlistOffer() {
 }
 
 // ══════════════ 5. PAINEL DE OCUPAÇÃO (admin) ══════════════
+// Retorna quantas poltronas/pessoas uma reserva (passagem) contém.
+// Uma reserva pode ter várias poltronas separadas por vírgula (ex: "12,13,14" = 3 pessoas).
+function seatsInTicket(t) {
+  const nums = String((t && t.seat) || '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+  return nums.length || 1; // fallback de segurança: nunca conta 0 pessoas para uma reserva válida
+}
+
 function renderOccupancyCharts() {
   const card = document.getElementById('occupancy-charts');
   if (!card) return;
@@ -3679,15 +3686,21 @@ function renderOccupancyCharts() {
   const occBus    = (document.getElementById('occ-bus-filter') || {}).value || '';
 
   // Dados REAIS calculados das passagens do banco (respeitam os filtros abaixo)
+  // IMPORTANTE: contamos por PESSOA (poltrona), não por RESERVA — uma mesma reserva
+  // pode conter várias poltronas (várias pessoas), então cada poltrona conta 1 vez.
   const dayNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const weekCounts = {};
   const busCounts = {};
   allPassagens.forEach(t => {
     if (t.cancelled) return;
+    const pax = seatsInTicket(t);
+    // Dia da semana = dia REAL de embarque (travelDate). Uma reserva semanal gera um
+    // ticket por dia de viagem — cada um conta no seu próprio dia, não no dia da reserva.
+    const travelD = parseTicketDate(t.travelDate || (t.date ? t.date.slice(0,10) : null));
+    if (travelD) weekCounts[travelD.getDay()] = (weekCounts[travelD.getDay()] || 0) + pax;
+    // Ocupação por linha permanece baseada no momento do registro da reserva.
     const d = parseTicketDate(t.reservedAt || t.date);
-    if (!d) return;
-    weekCounts[d.getDay()] = (weekCounts[d.getDay()] || 0) + 1;
-    if (t.busId) busCounts[t.busId] = (busCounts[t.busId] || 0) + 1;
+    if (d && t.busId) busCounts[t.busId] = (busCounts[t.busId] || 0) + pax;
   });
   const weekData = [1,2,3,4,5,6,0].filter(d => weekCounts[d]).map(d => ({ label: dayNames[d], val: weekCounts[d] }));
   if (!weekData.length) weekData.push({ label: 'Sem dados', val: 0 });
@@ -3710,7 +3723,7 @@ function renderOccupancyCharts() {
     if (d && d < periodStart) return;
     if (periodEnd && d && d > periodEnd) return;
     const l = cleanLocal(p.local);
-    if (pointCounts[l] !== undefined) pointCounts[l]++;
+    if (pointCounts[l] !== undefined) pointCounts[l] += seatsInTicket(p);
   });
   const pointData = Object.entries(pointCounts).map(([label, val]) => ({ label: label.replace(' do Rio Grande',''), val }));
 
@@ -3734,7 +3747,7 @@ function renderOccupancyCharts() {
       ${bars(occBus ? busData.filter(b => b.label.startsWith(occBus)) : busData, maxSeat)}
     </div>
     <div class="chart-section">
-      <div class="chart-title">📍 Reservas por ponto de embarque (${occPeriod === 'today' ? 'hoje' : occPeriod === '7d' ? 'últimos 7 dias' : occPeriod === '30d' ? 'últimos 30 dias' : occDateVal ? new Date(occDateVal+'T12:00:00').toLocaleDateString('pt-BR') : 'selecione uma data'})</div>
+      <div class="chart-title">📍 Passageiros por ponto de embarque (${occPeriod === 'today' ? 'hoje' : occPeriod === '7d' ? 'últimos 7 dias' : occPeriod === '30d' ? 'últimos 30 dias' : occDateVal ? new Date(occDateVal+'T12:00:00').toLocaleDateString('pt-BR') : 'selecione uma data'})</div>
       ${bars(pointData, maxPoint)}
     </div>
     ${heatmapHtml(occPeriod, occBus, periodStart, periodEnd)}`;
