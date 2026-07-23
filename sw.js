@@ -3,7 +3,7 @@
 // Estratégia: rede primeiro para o app (atualizações chegam sempre),
 // cache como reserva para abrir offline; APIs nunca são cacheadas.
 // ═══════════════════════════════════════════════════════════════
-const CACHE = 'place-v1';
+const CACHE = 'place-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -38,7 +38,7 @@ self.addEventListener('fetch', (e) => {
   // Navegação/HTML: rede primeiro (pega atualizações), cache se offline
   if (e.request.mode === 'navigate' || e.request.destination === 'document') {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'reload' }) // 'reload' ignora o cache HTTP do navegador, força ida à rede
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put('./index.html', copy));
