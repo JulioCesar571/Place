@@ -1496,15 +1496,9 @@ body{-webkit-tap-highlight-color:transparent;}
           <div class="filter-group">
             <span class="filter-label">Período:</span>
             <select class="filter-select" id="occ-period-filter" onchange="onOccPeriodChange()">
-              <option value="today" selected>Hoje</option>
-              <option value="7d">Últimos 7 dias</option>
-              <option value="30d">Últimos 30 dias</option>
-              <option value="custom">Data específica</option>
+              <option value="current" selected>Semana atual</option>
+              <option value="next">Semana seguinte</option>
             </select>
-          </div>
-          <div class="filter-group" id="occ-date-group" style="display:none;">
-            <span class="filter-label">Data:</span>
-            <input type="date" class="admin-date-input" id="occ-date-filter" onchange="renderOccupancyCharts()">
           </div>
           <div class="filter-group">
             <span class="filter-label">Ônibus:</span>
@@ -3678,53 +3672,64 @@ function seatsInTicket(t) {
   return nums.length || 1; // fallback de segurança: nunca conta 0 pessoas para uma reserva válida
 }
 
+// Retorna o intervalo (segunda 00h a domingo 23h59) da semana atual ou da semana seguinte,
+// com base no calendário — usado pelos filtros do Painel de Ocupação.
+function getOccWeekRange(which) {
+  const now = new Date();
+  const anchor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sinceMonday = (anchor.getDay() - 1 + 7) % 7;
+  anchor.setDate(anchor.getDate() - sinceMonday); // segunda-feira desta semana, 00h
+  if (which === 'next') anchor.setDate(anchor.getDate() + 7);
+  const start = new Date(anchor);
+  const end = new Date(anchor);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 function renderOccupancyCharts() {
   const card = document.getElementById('occupancy-charts');
   if (!card) return;
 
-  const occPeriod = (document.getElementById('occ-period-filter') || {}).value || 'today';
+  const occPeriod = (document.getElementById('occ-period-filter') || {}).value || 'current';
   const occBus    = (document.getElementById('occ-bus-filter') || {}).value || '';
 
-  // Dados REAIS calculados das passagens do banco (respeitam os filtros abaixo)
+  // Período selecionado (Semana atual / Semana seguinte) — calculado uma única vez
+  // e aplicado aos gráficos que respeitam o filtro de período.
+  const { start: periodStart, end: periodEnd } = getOccWeekRange(occPeriod);
+
+  // Dados REAIS calculados das passagens do banco.
   // IMPORTANTE: contamos por PESSOA (poltrona), não por RESERVA — uma mesma reserva
-  // pode conter várias poltronas (várias pessoas), então cada poltrona conta 1 vez.
+  // pode conter várias poltronas (várias pessoas). E usamos o dia REAL de embarque
+  // (travelDate) — não o dia em que a reserva foi feita — para dia da semana,
+  // linha e ponto de embarque.
   const dayNames = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   const weekCounts = {};
   const busCounts = {};
+  const pointCounts = { 'Pampa Hotel': 0, 'Igreja de Fátima': 0, 'CTG Porteira do Rio Grande': 0 };
+
   allPassagens.forEach(t => {
     if (t.cancelled) return;
-    const pax = seatsInTicket(t);
-    // Dia da semana = dia REAL de embarque (travelDate). Uma reserva semanal gera um
-    // ticket por dia de viagem — cada um conta no seu próprio dia, não no dia da reserva.
     const travelD = parseTicketDate(t.travelDate || (t.date ? t.date.slice(0,10) : null));
-    if (travelD) weekCounts[travelD.getDay()] = (weekCounts[travelD.getDay()] || 0) + pax;
-    // Ocupação por linha permanece baseada no momento do registro da reserva.
-    const d = parseTicketDate(t.reservedAt || t.date);
-    if (d && t.busId) busCounts[t.busId] = (busCounts[t.busId] || 0) + pax;
+    if (!travelD) return;
+    if (travelD < periodStart || travelD > periodEnd) return; // fora da semana selecionada
+    const pax = seatsInTicket(t);
+
+    // Dia da semana, ocupação por linha e passageiros por embarque — todos restritos
+    // à semana selecionada (atual ou seguinte).
+    weekCounts[travelD.getDay()] = (weekCounts[travelD.getDay()] || 0) + pax;
+
+    if (t.busId) busCounts[t.busId] = (busCounts[t.busId] || 0) + pax;
+
+    if (!occBus || t.busId === occBus) {
+      const l = cleanLocal(t.local);
+      if (pointCounts[l] !== undefined) pointCounts[l] += pax;
+    }
   });
+
   const weekData = [1,2,3,4,5,6,0].filter(d => weekCounts[d]).map(d => ({ label: dayNames[d], val: weekCounts[d] }));
   if (!weekData.length) weekData.push({ label: 'Sem dados', val: 0 });
   const busData = BUSES.map(b => ({ label: b.name, val: busCounts[b.id] || 0 }));
-  const pointCounts = { 'Pampa Hotel': 0, 'Igreja de Fátima': 0, 'CTG Porteira do Rio Grande': 0 };
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const occDateVal = (document.getElementById('occ-date-filter') || {}).value || '';
-  let periodStart = startOfToday, periodEnd = null;
-  if (occPeriod === '7d')  periodStart = new Date(startOfToday.getTime() - 6*86400000);
-  if (occPeriod === '30d') periodStart = new Date(startOfToday.getTime() - 29*86400000);
-  if (occPeriod === 'custom' && occDateVal) {
-    periodStart = new Date(occDateVal + 'T00:00:00');
-    periodEnd   = new Date(occDateVal + 'T23:59:59');
-  }
-  allPassagens.forEach(p => {
-    if (p.cancelled) return;
-    if (occBus && p.busId !== occBus) return;
-    const d = parseTicketDate(p.reservedAt || p.date);
-    if (d && d < periodStart) return;
-    if (periodEnd && d && d > periodEnd) return;
-    const l = cleanLocal(p.local);
-    if (pointCounts[l] !== undefined) pointCounts[l] += seatsInTicket(p);
-  });
   const pointData = Object.entries(pointCounts).map(([label, val]) => ({ label: label.replace(' do Rio Grande',''), val }));
 
   const maxSeat = 44;
@@ -3737,17 +3742,19 @@ function renderOccupancyCharts() {
   }).join('');
 
   const maxPoint = Math.max(1, ...pointData.map(d => d.val));
+  const fmtShort = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const periodLabel = (occPeriod === 'next' ? 'semana seguinte' : 'semana atual') + ` (${fmtShort(periodStart)} a ${fmtShort(periodEnd)})`;
   card.innerHTML = `
     <div class="chart-section">
-      <div class="chart-title">📅 Ocupação por dia da semana (de ${maxSeat} lugares)</div>
+      <div class="chart-title">📅 Ocupação por dia da semana — ${periodLabel} (de ${maxSeat} lugares)</div>
       ${bars(weekData, maxSeat)}
     </div>
     <div class="chart-section">
-      <div class="chart-title">🚌 Ocupação por linha ${occBus ? '<span class="filter-active-chip">filtro: ' + (BUSES.find(b=>b.id===occBus)||{}).name + '</span>' : ''}</div>
+      <div class="chart-title">🚌 Ocupação por linha (${periodLabel}) ${occBus ? '<span class="filter-active-chip">filtro: ' + (BUSES.find(b=>b.id===occBus)||{}).name + '</span>' : ''}</div>
       ${bars(occBus ? busData.filter(b => b.label.startsWith(occBus)) : busData, maxSeat)}
     </div>
     <div class="chart-section">
-      <div class="chart-title">📍 Passageiros por ponto de embarque (${occPeriod === 'today' ? 'hoje' : occPeriod === '7d' ? 'últimos 7 dias' : occPeriod === '30d' ? 'últimos 30 dias' : occDateVal ? new Date(occDateVal+'T12:00:00').toLocaleDateString('pt-BR') : 'selecione uma data'})</div>
+      <div class="chart-title">📍 Passageiros por ponto de embarque (${periodLabel})</div>
       ${bars(pointData, maxPoint)}
     </div>
     ${heatmapHtml(occPeriod, occBus, periodStart, periodEnd)}`;
@@ -5154,9 +5161,9 @@ function heatmapHtml(occPeriod, occBus, periodStart, periodEnd) {
   allPassagens.forEach(t => {
     if (t.cancelled) return;
     if (occBus && t.busId !== occBus) return;
-    const d = parseTicketDate(t.reservedAt || t.date);
-    if (d && d < periodStart) return;
-    if (periodEnd && d && d > periodEnd) return;
+    const d = parseTicketDate(t.travelDate || (t.date ? t.date.slice(0,10) : null));
+    if (!d || d < periodStart) return;
+    if (periodEnd && d > periodEnd) return;
     String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => {
       counts[n] = (counts[n] || 0) + 1;
       if (counts[n] > max) max = counts[n];
@@ -5841,8 +5848,6 @@ function switchAdminTab(tab) {
 }
 
 function onOccPeriodChange() {
-  const period = document.getElementById('occ-period-filter').value;
-  document.getElementById('occ-date-group').style.display = period === 'custom' ? 'flex' : 'none';
   renderOccupancyCharts();
 }
 
