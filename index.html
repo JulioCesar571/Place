@@ -3707,6 +3707,8 @@ function renderOccupancyCharts() {
   const weekCounts = {};
   const busCounts = {};
   const pointCounts = { 'Pampa Hotel': 0, 'Igreja de Fátima': 0, 'CTG Porteira do Rio Grande': 0 };
+  const busPeople = {};   // busId -> { cpf: maxPax } — pessoas distintas por linha na semana
+  const pointPeople = {}; // local -> { cpf: maxPax } — pessoas distintas por ponto na semana
 
   allPassagens.forEach(t => {
     if (t.cancelled) return;
@@ -3715,16 +3717,32 @@ function renderOccupancyCharts() {
     if (travelD < periodStart || travelD > periodEnd) return; // fora da semana selecionada
     const pax = seatsInTicket(t);
 
-    // Dia da semana, ocupação por linha e passageiros por embarque — todos restritos
-    // à semana selecionada (atual ou seguinte).
+    // Dia da semana: pessoas embarcando em CADA dia — quem viaja 5 dias conta 1 em cada dia.
     weekCounts[travelD.getDay()] = (weekCounts[travelD.getDay()] || 0) + pax;
 
-    if (t.busId) busCounts[t.busId] = (busCounts[t.busId] || 0) + pax;
-
+    // Linha e ponto de embarque: pessoas DISTINTAS na semana — quem viaja 5 dias na
+    // mesma linha é 1 pessoa (não 5). Agrupamos por CPF e usamos o maior nº de
+    // poltronas entre os tickets da pessoa (cobre acompanhantes na mesma reserva).
+    const who = t.cpf || t.code; // fallback: sem cpf, cada ticket vale como pessoa única
+    if (t.busId) {
+      if (!busPeople[t.busId]) busPeople[t.busId] = {};
+      busPeople[t.busId][who] = Math.max(busPeople[t.busId][who] || 0, pax);
+    }
     if (!occBus || t.busId === occBus) {
       const l = cleanLocal(t.local);
-      if (pointCounts[l] !== undefined) pointCounts[l] += pax;
+      if (pointCounts[l] !== undefined) {
+        if (!pointPeople[l]) pointPeople[l] = {};
+        pointPeople[l][who] = Math.max(pointPeople[l][who] || 0, pax);
+      }
     }
+  });
+
+  // Consolida: soma as pessoas distintas de cada linha / ponto
+  Object.keys(busPeople).forEach(busId => {
+    busCounts[busId] = Object.values(busPeople[busId]).reduce((s, n) => s + n, 0);
+  });
+  Object.keys(pointPeople).forEach(l => {
+    pointCounts[l] = Object.values(pointPeople[l]).reduce((s, n) => s + n, 0);
   });
 
   const weekData = [1,2,3,4,5,6,0].filter(d => weekCounts[d]).map(d => ({ label: dayNames[d], val: weekCounts[d] }));
@@ -3750,7 +3768,7 @@ function renderOccupancyCharts() {
       ${bars(weekData, maxSeat)}
     </div>
     <div class="chart-section">
-      <div class="chart-title">🚌 Ocupação por linha (${periodLabel}) ${occBus ? '<span class="filter-active-chip">filtro: ' + (BUSES.find(b=>b.id===occBus)||{}).name + '</span>' : ''}</div>
+      <div class="chart-title">🚌 Pessoas por linha (${periodLabel}) ${occBus ? '<span class="filter-active-chip">filtro: ' + (BUSES.find(b=>b.id===occBus)||{}).name + '</span>' : ''}</div>
       ${bars(occBus ? busData.filter(b => b.label.startsWith(occBus)) : busData, maxSeat)}
     </div>
     <div class="chart-section">
