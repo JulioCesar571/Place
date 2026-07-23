@@ -1212,6 +1212,7 @@ body{-webkit-tap-highlight-color:transparent;}
           </div>
           <button class="btn-download-list" onclick="downloadOfflineList()">📥 Baixar lista de passageiros</button>
         </div>
+        <div class="offline-sub" id="pending-sync-text" style="margin-top:6px;"></div>
         <button class="btn-finish-trip" onclick="finishTrip()">🏁 Encerrar viagem e enviar resumo ao admin</button>
       </div>
 
@@ -2089,6 +2090,15 @@ async function _dbRefreshRun() {
     // PASSAGENS (todas, para admin/histórico) + estado do dia
     allPassagens.length = 0;
     ticketRows.forEach(r => allPassagens.push(rowToTicket(r)));
+
+    // Reaplica embarques offline ainda não sincronizados — a fila local é a fonte
+    // da verdade até o banco confirmar. Sem isso, um refresh no meio da viagem
+    // apagaria o boardedAt registrado sem internet e o passageiro constaria
+    // como ausente no encerramento.
+    getPendingBoardings().forEach(pb => {
+      const i = allPassagens.findIndex(p => p.code === pb.code);
+      if (i >= 0 && !allPassagens[i].boardedAt) allPassagens[i].boardedAt = pb.boardedAt;
+    });
 
     const today = getTodayStr();
     const travelOf = t => t.travelDate || (t.date ? t.date.slice(0,10) : null);
@@ -3931,6 +3941,7 @@ function updateOfflineUI() {
   const dot = document.getElementById('offline-dot');
   const text = document.getElementById('offline-text');
   const sub = document.getElementById('offline-sub');
+  updatePendingSyncUI();
   if (!dot) return;
   if (offlineList && offlineList.length) {
     dot.className = 'offline-dot od-on';
@@ -3948,6 +3959,55 @@ function resolveOfflineTicket(code) {
   if (!offlineList) return null;
   return offlineList.find(p => p.code === code) || null;
 }
+
+// ── Fila de embarques offline ──────────────────────────────────────────────
+// Cada validação feita pelo monitor (com ou sem internet) é gravada aqui
+// imediatamente, sobrevivendo a fechar o app/recarregar a página. A sincronização
+// com o banco acontece: (1) em segundo plano sempre que possível, (2) ao voltar
+// a ficar online, e (3) sempre, de forma garantida, ao "Encerrar viagem" — que
+// também embute a lista completa de embarques no próprio resumo enviado.
+const PENDING_KEY = 'place_pending_boardings';
+
+function getPendingBoardings() {
+  try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(e) { return []; }
+}
+function savePendingBoardings(list) {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(list)); } catch(e) {}
+  updatePendingSyncUI();
+}
+function queueBoarding(entry) {
+  const list = getPendingBoardings();
+  if (!list.some(e => e.code === entry.code)) list.push(entry);
+  savePendingBoardings(list);
+}
+function updatePendingSyncUI() {
+  const el = document.getElementById('pending-sync-text');
+  if (!el) return;
+  const n = getPendingBoardings().length;
+  el.textContent = n ? `⏳ ${n} embarque(s) aguardando sincronização com o banco` : '';
+}
+
+// Tenta gravar cada embarque pendente no banco (tickets.boarded_at). Sucesso remove
+// da fila; falha (sem internet) mantém para a próxima tentativa. Entradas com mais
+// de 7 dias são descartadas (a viagem já foi entregue via resumo do monitor).
+// Nunca bloqueia a UI.
+async function flushPendingBoardings() {
+  const list = getPendingBoardings();
+  if (!list.length) return;
+  const cutoff = Date.now() - 7 * 86400000;
+  const stillPending = [];
+  for (const entry of list) {
+    const d = parseTicketDate(entry.boardedAt);
+    if (d && d.getTime() < cutoff) continue; // viagem antiga — descarta da fila
+    try {
+      await sb('/tickets?code=eq.' + encodeURIComponent(entry.code), { method: 'PATCH', body: JSON.stringify({ boarded_at: entry.boardedAt }) });
+    } catch(e) {
+      stillPending.push(entry); // sem conexão — tenta de novo depois
+    }
+  }
+  savePendingBoardings(stillPending);
+}
+window.addEventListener('online', () => flushPendingBoardings());
 
 
 // ═══════ RESERVA SEMANAL ANTECIPADA ═══════
@@ -4132,6 +4192,7 @@ function switchMonitorPanel(panel) {
     startMonScanReader();
     loadOfflineList();
     updateOfflineUI();
+    flushPendingBoardings(); // tentativa em segundo plano, não bloqueia a tela
   }
 }
 
@@ -4481,15 +4542,25 @@ async function processMonitorScan(raw) {
       // Register passenger in occupied map so boarding map shows their name
       data.seat.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
         .forEach(n => { if (!occupied.has(n)) occupied.set(n, data.passenger); });
-      // Record boarding time on allPassagens
+      // Record boarding time on allPassagens (funciona 100% offline — não depende do banco)
       const boardedNow = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      const apIdx = allPassagens.findIndex(p => p.code === data.code);
-      if (apIdx >= 0) { allPassagens[apIdx].boardedAt = boardedNow; }
+      let apIdx = allPassagens.findIndex(p => p.code === data.code);
+      if (apIdx >= 0) {
+        allPassagens[apIdx].boardedAt = boardedNow;
+      } else {
+        // Ticket veio só da lista offline (app aberto sem internet): incorpora ao
+        // estado local, senão o finishTrip contaria este passageiro como ausente.
+        allPassagens.push({ ...data, boardedAt: boardedNow });
+        apIdx = allPassagens.length - 1;
+      }
       const pIdx = passagens.findIndex(p => p.code === data.code);
       if (pIdx >= 0) { passagens[pIdx].boardedAt = boardedNow; }
-      dbPatchTicket(data.code, { boarded_at: boardedNow });
-      // Retroalimenta o histórico do passageiro (embarque concluído)
+      // Grava na fila local (sobrevive offline/reload) e tenta sincronizar em segundo
+      // plano — se não houver internet agora, fica pendente até o fim da viagem.
       const ownerCpf = data.cpf || (apIdx >= 0 ? allPassagens[apIdx].cpf : null);
+      queueBoarding({ code: data.code, boardedAt: boardedNow, cpf: ownerCpf, passenger: data.passenger, seat: data.seat, local: data.local, bus: data.busName || data.bus });
+      flushPendingBoardings(); // tentativa em segundo plano; não bloqueia nem falha visivelmente
+      // Retroalimenta o histórico do passageiro (embarque concluído)
       if (ownerCpf) recordHistory(ownerCpf, { code: data.code, date: boardedNow, seat: data.seat, local: data.local, bus: data.busName || data.bus, status: 'done' });
       card.className = 'scan-result-card valid';
       icon.textContent = '✅';
@@ -5739,6 +5810,11 @@ async function finishTrip() {
   const bus = BUSES.find(b => b.id === busId) || { name: busId };
   if (!window.confirm(`Encerrar a viagem do ${bus.name}?\n\nPassageiros que não embarcaram serão marcados como AUSENTES e o resumo será enviado ao admin.`)) return;
 
+  // Última tentativa de sincronizar os embarques feitos offline durante a viagem.
+  // Se ainda não houver internet aqui, os dados não se perdem: seguem completos
+  // dentro do próprio resumo (report.boardings) enviado logo abaixo.
+  await flushPendingBoardings();
+
   const today = getTodayStr();
   const tripTickets = allPassagens.filter(t =>
     !t.cancelled && t.busId === busId && (t.travelDate || (t.date ? t.date.slice(0,10) : null)) === today);
@@ -5760,6 +5836,11 @@ async function finishTrip() {
     seatStatus[s] = tk ? (tk.boardedAt ? 'boarded' : 'absent') : 'free';
   }
 
+  // Lista completa de embarques desta viagem — vai junto no resumo como garantia:
+  // mesmo que algum ticket individual não tenha sincronizado sozinho (ex: sem
+  // internet durante toda a viagem), o admin recebe os dados de qualquer forma.
+  const boardings = boarded.map(t => ({ code: t.code, cpf: t.cpf, passenger: t.passenger, seat: t.seat, local: t.local, boardedAt: t.boardedAt }));
+
   const report = {
     date: today,
     bus_id: busId,
@@ -5768,7 +5849,8 @@ async function finishTrip() {
     boarded: boarded.length,
     absent: absent.length,
     total: tripTickets.length,
-    seats: seatStatus
+    seats: seatStatus,
+    boardings: boardings
   };
   await dbInsertTripReport(report);
   showToast(`🏁 Viagem encerrada! Resumo enviado: ${boarded.length} embarcaram, ${absent.length} ausente(s).`);
