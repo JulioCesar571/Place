@@ -4013,10 +4013,27 @@ async function manualSyncBoardings() {
 // da fila; falha (sem internet) mantém para a próxima tentativa. Entradas com mais
 // de 7 dias são descartadas (a viagem já foi entregue via resumo do monitor).
 // Nunca bloqueia a UI.
+// Lê o "crachá" (claims) da sessão autenticada — o que o banco realmente enxerga.
+// Usado no diagnóstico na tela: papel e linha precisam bater com a política RLS.
+function getAuthClaims() {
+  try {
+    const tok = authSession && authSession.access_token;
+    if (!tok) return null;
+    const payload = JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const md = payload.app_metadata || {};
+    return { cpf: md.cpf || null, role: md.role || null, bus: md.bus_id || null };
+  } catch(e) { return null; }
+}
+
 // Traduz o erro técnico em algo que o monitor entende sem precisar de DevTools/F12
 // (que na prática não é usável no celular durante a viagem).
 function humanizeSyncError(msg) {
   const m = String(msg || '');
+  if (/ZERO_ROWS/.test(m)) {
+    const c = getAuthClaims();
+    const cracha = c ? `papel=${c.role || 'nenhum'}, linha=${c.bus || 'nenhuma'}` : 'sessão não autenticada';
+    return `o banco recusou silenciosamente (nenhuma linha atualizada). Crachá da sua sessão: ${cracha}. O papel precisa ser "monitor" e a linha precisa ser a do ticket — corrija o cadastro e refaça o login`;
+  }
   if (/42501|row-level security|permission denied|DB 40[13]/i.test(m)) {
     return 'permissão negada pelo banco (confira se este monitor está vinculado à linha certa)';
   }
@@ -4035,7 +4052,12 @@ async function flushPendingBoardings() {
     const d = parseTicketDate(entry.boardedAt);
     if (d && d.getTime() < cutoff) continue; // viagem antiga — descarta da fila
     try {
-      await sb('/tickets?code=eq.' + encodeURIComponent(entry.code), { method: 'PATCH', body: JSON.stringify({ boarded_at: entry.boardedAt }) });
+      // ARMADILHA DO RLS: um UPDATE barrado pela política NÃO dá erro — atualiza
+      // 0 linhas e responde "sucesso". Por isso exigimos return=representation e
+      // conferimos se a linha voltou de fato. 0 linhas = falha real, fica na fila.
+      const rows = await sb('/tickets?code=eq.' + encodeURIComponent(entry.code),
+        { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify({ boarded_at: entry.boardedAt }) });
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('ZERO_ROWS');
       synced++;
     } catch(e) {
       lastError = humanizeSyncError(e.message);
@@ -5843,7 +5865,7 @@ async function applyConsolidation(day, fromId, toId) {
 
 // ---- RESUMO PÓS-VIAGEM ----
 function dbInsertTripReport(r) {
-  return sb('/trip_reports', { method: 'POST', body: JSON.stringify([r]) }).catch(dbErr);
+  return sb('/trip_reports', { method: 'POST', body: JSON.stringify([r]) });
 }
 
 async function finishTrip() {
@@ -5894,8 +5916,16 @@ async function finishTrip() {
     seats: seatStatus,
     boardings: boardings
   };
-  await dbInsertTripReport(report);
-  showToast(`🏁 Viagem encerrada! Resumo enviado: ${boarded.length} embarcaram, ${absent.length} ausente(s).`);
+  try {
+    await dbInsertTripReport(report);
+    showToast(`🏁 Viagem encerrada! Resumo enviado: ${boarded.length} embarcaram, ${absent.length} ausente(s).`);
+  } catch (e) {
+    // Não mostra falso sucesso: o resumo NÃO chegou ao banco. Mantém os dados
+    // intactos localmente (allPassagens/fila) para nova tentativa, e mostra o
+    // motivo real em vez de "viagem encerrada".
+    showToast(`❌ O resumo NÃO foi enviado ao banco — motivo: ${humanizeSyncError(e.message)}. Tente novamente quando houver conexão/permissão OK.`);
+    console.warn('Falha ao enviar trip_report:', e.message);
+  }
 }
 
 function mosaicHtml(seats) {
