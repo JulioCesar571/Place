@@ -1213,6 +1213,7 @@ body{-webkit-tap-highlight-color:transparent;}
           <button class="btn-download-list" onclick="downloadOfflineList()">📥 Baixar lista de passageiros</button>
         </div>
         <div class="offline-sub" id="pending-sync-text" style="margin-top:6px;"></div>
+        <button class="btn-download-list" id="btn-sync-now" style="display:none;" onclick="manualSyncBoardings()">🔄 Sincronizar embarques pendentes agora</button>
         <button class="btn-finish-trip" onclick="finishTrip()">🏁 Encerrar viagem e enviar resumo ao admin</button>
       </div>
 
@@ -3967,6 +3968,7 @@ function resolveOfflineTicket(code) {
 // a ficar online, e (3) sempre, de forma garantida, ao "Encerrar viagem" — que
 // também embute a lista completa de embarques no próprio resumo enviado.
 const PENDING_KEY = 'place_pending_boardings';
+let lastSyncError = null; // motivo legível da última falha de sincronização (exibido na tela)
 
 function getPendingBoardings() {
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch(e) { return []; }
@@ -3982,30 +3984,70 @@ function queueBoarding(entry) {
 }
 function updatePendingSyncUI() {
   const el = document.getElementById('pending-sync-text');
-  if (!el) return;
+  const btn = document.getElementById('btn-sync-now');
   const n = getPendingBoardings().length;
-  el.textContent = n ? `⏳ ${n} embarque(s) aguardando sincronização com o banco` : '';
+  if (el) {
+    if (!n) el.textContent = '';
+    else el.textContent = `⏳ ${n} embarque(s) aguardando sincronização` + (lastSyncError ? ` — motivo: ${lastSyncError}` : '');
+  }
+  if (btn) btn.style.display = n ? 'block' : 'none';
+}
+
+// Botão manual: mostra exatamente o que aconteceu (sincronizou / falhou / motivo em
+// português, sem precisar de DevTools — o monitor está no celular, não no PC).
+async function manualSyncBoardings() {
+  const before = getPendingBoardings().length;
+  if (!before) { showToast('Nenhum embarque pendente.'); return; }
+  showToast('Sincronizando…');
+  const r = await flushPendingBoardings();
+  if (r.failed === 0) {
+    showToast(`✅ ${r.synced} embarque(s) sincronizado(s) com sucesso.`);
+  } else if (r.synced === 0) {
+    showToast(`❌ Não foi possível sincronizar ${r.failed} embarque(s) — motivo: ${r.lastError}.`);
+  } else {
+    showToast(`⚠️ ${r.synced} sincronizado(s), ${r.failed} falharam — motivo: ${r.lastError}.`);
+  }
 }
 
 // Tenta gravar cada embarque pendente no banco (tickets.boarded_at). Sucesso remove
 // da fila; falha (sem internet) mantém para a próxima tentativa. Entradas com mais
 // de 7 dias são descartadas (a viagem já foi entregue via resumo do monitor).
 // Nunca bloqueia a UI.
+// Traduz o erro técnico em algo que o monitor entende sem precisar de DevTools/F12
+// (que na prática não é usável no celular durante a viagem).
+function humanizeSyncError(msg) {
+  const m = String(msg || '');
+  if (/42501|row-level security|permission denied|DB 40[13]/i.test(m)) {
+    return 'permissão negada pelo banco (confira se este monitor está vinculado à linha certa)';
+  }
+  if (/DB 4\d\d/.test(m)) return 'o banco recusou o registro (erro ' + m.match(/DB (\d+)/)[1] + ')';
+  if (/DB 5\d\d/.test(m)) return 'o banco está indisponível no momento';
+  return 'sem conexão com a internet'; // fetch falhou antes de chegar resposta = típico de estar offline
+}
+
 async function flushPendingBoardings() {
   const list = getPendingBoardings();
-  if (!list.length) return;
+  if (!list.length) return { synced: 0, failed: 0, total: 0, lastError: null };
   const cutoff = Date.now() - 7 * 86400000;
   const stillPending = [];
+  let synced = 0, failed = 0, lastError = null;
   for (const entry of list) {
     const d = parseTicketDate(entry.boardedAt);
     if (d && d.getTime() < cutoff) continue; // viagem antiga — descarta da fila
     try {
       await sb('/tickets?code=eq.' + encodeURIComponent(entry.code), { method: 'PATCH', body: JSON.stringify({ boarded_at: entry.boardedAt }) });
+      synced++;
     } catch(e) {
-      stillPending.push(entry); // sem conexão — tenta de novo depois
+      lastError = humanizeSyncError(e.message);
+      console.warn('Falha ao sincronizar embarque', entry.code, '—', e.message);
+      failed++;
+      stillPending.push(entry); // mantém na fila para nova tentativa
     }
   }
   savePendingBoardings(stillPending);
+  lastSyncError = lastError;
+  updatePendingSyncUI(); // savePendingBoardings já atualiza a UI, mas lastSyncError mudou depois — reaplica
+  return { synced, failed, total: list.length, lastError };
 }
 window.addEventListener('online', () => flushPendingBoardings());
 
