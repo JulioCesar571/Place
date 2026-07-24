@@ -4014,26 +4014,12 @@ async function manualSyncBoardings() {
 // da fila; falha (sem internet) mantém para a próxima tentativa. Entradas com mais
 // de 7 dias são descartadas (a viagem já foi entregue via resumo do monitor).
 // Nunca bloqueia a UI.
-// Lê o "crachá" (claims) da sessão autenticada — o que o banco realmente enxerga.
-// Usado no diagnóstico na tela: papel e linha precisam bater com a política RLS.
-function getAuthClaims() {
-  try {
-    const tok = authSession && authSession.access_token;
-    if (!tok) return null;
-    const payload = JSON.parse(atob(tok.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-    const md = payload.app_metadata || {};
-    return { cpf: md.cpf || null, role: md.role || null, bus: md.bus_id || null };
-  } catch(e) { return null; }
-}
-
 // Traduz o erro técnico em algo que o monitor entende sem precisar de DevTools/F12
 // (que na prática não é usável no celular durante a viagem).
 function humanizeSyncError(msg) {
   const m = String(msg || '');
   if (/ZERO_ROWS/.test(m)) {
-    const c = getAuthClaims();
-    const cracha = c ? `papel=${c.role || 'nenhum'}, linha=${c.bus || 'nenhuma'}` : 'sessão não autenticada';
-    return `o banco recusou silenciosamente (nenhuma linha atualizada). Crachá da sua sessão: ${cracha}. O papel precisa ser "monitor" e a linha precisa ser a do ticket — corrija o cadastro e refaça o login`;
+    return 'o banco recusou silenciosamente (nenhuma linha atualizada). Confira na aba Usuários do admin se este monitor está com o papel "monitor" e a linha correta — a permissão é conferida direto no cadastro atual (não depende mais de logout/login)';
   }
   if (/42501|row-level security|permission denied|DB 40[13]/i.test(m)) {
     return 'permissão negada pelo banco (confira se este monitor está vinculado à linha certa)';
