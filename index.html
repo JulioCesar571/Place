@@ -2581,6 +2581,7 @@ function saveUserStatus(cpf) {
     delete u.busId;
   }
   persistUsers();
+  dbSaveUser(u); // grava no Supabase — sem isso, o próximo dbRefresh (a cada 20s) reverte a troca de linha/poltrona
   rebuildMonitorSeats();
   if (document.getElementById('cabin') && document.getElementById('cabin').children.length) buildCabin();
   const btn = document.getElementById('pbtn-' + key);
