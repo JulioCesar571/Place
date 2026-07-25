@@ -5416,6 +5416,19 @@ async function subscribeToPush() {
     if (Notification.permission !== 'granted') return;
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      // Se a inscrição já existente foi criada com uma chave VAPID diferente da
+      // atual (ex: de um teste anterior), ela nunca vai validar no envio — precisa
+      // ser recriada. Sem essa checagem, o navegador reaproveitaria a antiga pra
+      // sempre e o push sempre falharia silenciosamente (403) do lado do servidor.
+      const expectedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const currentKey = sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+      const matches = !!currentKey && currentKey.length === expectedKey.length && currentKey.every((b, i) => b === expectedKey[i]);
+      if (!matches) {
+        try { await sub.unsubscribe(); } catch(e) {}
+        sub = null;
+      }
+    }
     if (!sub) {
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
     }
