@@ -912,6 +912,11 @@ body{-webkit-tap-highlight-color:transparent;}
       </div>
     </div>
 
+    <div id="notif-permission-banner" style="display:none;align-items:center;justify-content:space-between;gap:10px;background:#FFF8E1;border:1px solid #F0C419;border-radius:10px;padding:10px 14px;margin:0 0 14px;">
+      <span style="font-size:14px;color:#5c4a00;">🔔 Ative as notificações para avisos de reserva e comunicados.</span>
+      <button onclick="requestNotifPermissionFromTap()" style="background:#174F49;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap;">Ativar</button>
+    </div>
+
     <div class="app-grid">
       <div class="bus-card">
         <div class="bus-direction"><span>⬆ Frente</span><span>Traseira ⬇</span></div>
@@ -5351,12 +5356,29 @@ function heatmapHtml(occPeriod, occBus, periodStart, periodEnd) {
 function askNotifPermission() {
   try {
     if (!('Notification' in window)) return;
-    if (Notification.permission === 'default') {
-      setTimeout(() => Notification.requestPermission().then(p => { if (p === 'granted') subscribeToPush(); }).catch(()=>{}), 2500);
-    } else if (Notification.permission === 'granted') {
+    if (Notification.permission === 'granted') {
       subscribeToPush(); // já autorizado antes (ex: outra sessão) — garante que a inscrição push existe
     }
+    updateNotifBannerVisibility(); // se ainda não decidiu, mostra o botão "Ativar" (iPhone exige toque direto do usuário — pedir via setTimeout falha silenciosamente no Safari)
   } catch(e) {}
+}
+
+function updateNotifBannerVisibility() {
+  const el = document.getElementById('notif-permission-banner');
+  if (!el) return;
+  el.style.display = ('Notification' in window && Notification.permission === 'default') ? 'flex' : 'none';
+}
+
+// Chamada DIRETO pelo onclick do botão — precisa ser síncrona até aqui pra
+// contar como gesto do usuário (exigência do Safari/iOS; o Chrome aceita de
+// qualquer jeito, então esse caminho funciona igual nos dois).
+function requestNotifPermissionFromTap() {
+  if (!('Notification' in window)) { showToast('Notificações não são suportadas neste navegador.'); return; }
+  Notification.requestPermission().then(p => {
+    updateNotifBannerVisibility();
+    if (p === 'granted') { subscribeToPush(); showToast('🔔 Notificações ativadas!'); }
+    else if (p === 'denied') { showToast('Permissão negada — para ativar depois, libere nas notificações deste app/site nas configurações do celular.'); }
+  }).catch(()=>{});
 }
 
 // ── PUSH DE VERDADE (chega mesmo com o app fechado) ───────────────────────
