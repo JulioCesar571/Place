@@ -1947,12 +1947,26 @@ async function adminResetPassword(cpf, newPass) {
   }
 }
 
+let _refreshPromise = null; // evita renovações simultâneas do mesmo refresh_token (ver authRefresh)
 async function authRefresh() {
   if (!authSession || !authSession.refresh_token) return false;
-  const r = await authRequest('/auth/v1/token?grant_type=refresh_token', { refresh_token: authSession.refresh_token });
-  if (r.ok) { authSaveSession(r.data); return true; }
-  authClearSession();
-  return false;
+  // Se várias chamadas detectam o token expirado ao mesmo tempo (comum: dbRefresh
+  // dispara vários pedidos em paralelo), só a PRIMEIRA deve de fato renovar — o
+  // Supabase invalida o refresh_token após o primeiro uso, então uma segunda
+  // renovação concorrente com o mesmo token sempre falharia e derrubaria a sessão
+  // que a primeira tinha acabado de salvar. As demais só esperam o mesmo resultado.
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const r = await authRequest('/auth/v1/token?grant_type=refresh_token', { refresh_token: authSession.refresh_token });
+      if (r.ok) { authSaveSession(r.data); return true; }
+      authClearSession();
+      return false;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
 }
 setInterval(() => { if (authSession && !document.hidden) authRefresh(); }, 50 * 60000);
 authLoadSession();
