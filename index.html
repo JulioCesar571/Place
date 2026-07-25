@@ -3076,8 +3076,8 @@ async function doLogin() {
 async function loginSuccess(user) {
   currentUser = user;
   dbLoadHistory(user.cpf);
-  if (user.role === 'admin') { dbRefresh(); showAdminScreen(); return; }
-  if (user.role === 'monitor') { dbRefresh(); showMonitorScreen(); return; }
+  if (user.role === 'admin') { dbRefresh(); showAdminScreen(); askNotifPermission(); return; }
+  if (user.role === 'monitor') { dbRefresh(); showMonitorScreen(); askNotifPermission(); return; }
   if (user.role === 'passenger' && getPriority(user) === 'blocked') { showScreen('blocked'); return; }
 
   document.getElementById('app-avatar').textContent = user.initials;
@@ -5352,9 +5352,44 @@ function askNotifPermission() {
   try {
     if (!('Notification' in window)) return;
     if (Notification.permission === 'default') {
-      setTimeout(() => Notification.requestPermission().catch(()=>{}), 2500);
+      setTimeout(() => Notification.requestPermission().then(p => { if (p === 'granted') subscribeToPush(); }).catch(()=>{}), 2500);
+    } else if (Notification.permission === 'granted') {
+      subscribeToPush(); // já autorizado antes (ex: outra sessão) — garante que a inscrição push existe
     }
   } catch(e) {}
+}
+
+// ── PUSH DE VERDADE (chega mesmo com o app fechado) ───────────────────────
+// Chave pública VAPID — não é segredo, é seguro expor no cliente (é assim
+// que o Web Push funciona: só a chave PRIVADA, guardada só no servidor,
+// consegue de fato enviar notificações).
+const VAPID_PUBLIC_KEY = 'BDiKN8l-e67Y2fgj85DPE4g47qe8slNycyJfHxZcJBE75i_zWhQEHcQPrfwf32afhrfm7XS7WabHshQGaxj08xM';
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function subscribeToPush() {
+  try {
+    if (!currentUser || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
+    }
+    const json = sub.toJSON();
+    await sb('/push_subscriptions', {
+      method: 'POST',
+      prefer: 'resolution=merge-duplicates',
+      body: JSON.stringify([{ cpf: currentUser.cpf, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth }])
+    }).catch(dbErr);
+  } catch(e) { console.warn('Inscrição push falhou:', e.message); }
 }
 
 function notifyOnce(key, title, body, icon) {

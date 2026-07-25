@@ -3,7 +3,7 @@
 // Estratégia: rede primeiro para o app (atualizações chegam sempre),
 // cache como reserva para abrir offline; APIs nunca são cacheadas.
 // ═══════════════════════════════════════════════════════════════
-const CACHE = 'place-v13';
+const CACHE = 'place-v14';
 const APP_SHELL = [
   './',
   './index.html',
@@ -65,6 +65,35 @@ self.addEventListener('fetch', (e) => {
         }
         return res;
       }).catch(() => cached);
+    })
+  );
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PUSH DE VERDADE — chega mesmo com o app fechado.
+// O payload vem das Edge Functions send-push / notify-booking-cycle:
+// { "title": "...", "body": "..." }
+// ═══════════════════════════════════════════════════════════════
+self.addEventListener('push', (e) => {
+  let data = { title: 'Place', body: '' };
+  try { if (e.data) data = { ...data, ...e.data.json() }; } catch(err) {}
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body || '',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: data.tag || undefined
+    })
+  );
+});
+
+// Ao tocar na notificação: foca uma aba já aberta do app, ou abre uma nova.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if ('focus' in c) return c.focus(); }
+      if (clients.openWindow) return clients.openWindow('./index.html');
     })
   );
 });
