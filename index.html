@@ -4725,8 +4725,11 @@ function loadCustomUsers() {
     const data = JSON.parse(raw);
     // Formato novo: base completa persistida
     if (Array.isArray(data.allUsers)) {
-      // Remove passageiros/monitores atuais e aplica a base salva
-      Object.keys(USERS).forEach(cpf => { const u = USERS[cpf]; if (u.role === 'passenger' || u.role === 'monitor') delete USERS[cpf]; });
+      // MESCLA por cima do que já existe (não apaga contas ausentes do snapshot —
+      // ex: contas-semente ou contas de outro dispositivo ainda não sincronizadas
+      // aqui). Um snapshot antigo/incompleto não pode fazer uma conta válida
+      // "desaparecer" antes do próximo dbRefresh(); esse sim é a fonte da verdade
+      // completa quando há internet.
       data.allUsers.forEach(u => { USERS[u.cpf] = u; });
       return;
     }
