@@ -2198,6 +2198,12 @@ function rebuildUserPassagens() {
     .filter(t => { const d = parseTicketDate(travelOf(t)); return d && d >= todayD; })
     .sort((a, b) => parseTicketDate(travelOf(a)) - parseTicketDate(travelOf(b)))
     .forEach(t => passagens.push(t));
+  // Guarda uma cópia local de "Minhas Passagens" só quando os dados são de fato
+  // atuais (sincronização online bem-sucedida) — evita sobrescrever o cache bom
+  // com uma lista vazia quando estamos offline e allPassagens ainda não carregou.
+  if (dbOnline && currentUser.role === 'passenger') {
+    try { localStorage.setItem('place_my_tickets_' + currentUser.cpf, JSON.stringify(passagens)); } catch(e) {}
+  }
 }
 
 // Re-renderiza apenas o que está visível, preservando seleções em andamento
@@ -3167,6 +3173,20 @@ async function loginSuccess(user) {
   await dbRefresh();
   // A sincronização pode ter começado antes do login — reconstrói do cache
   rebuildUserPassagens();
+
+  // Offline (ou banco fora do ar) e nada sincronizou agora? Usa a última cópia
+  // salva localmente na sincronização boa anterior — sem isso, o app achava que
+  // o passageiro não tinha nenhuma reserva e voltava pra tela de escolher ônibus.
+  if (!dbOnline && passagens.length === 0) {
+    try {
+      const cached = JSON.parse(localStorage.getItem('place_my_tickets_' + user.cpf) || '[]');
+      if (cached.length) {
+        cached.forEach(t => passagens.push(t));
+        showToast('📴 Mostrando suas passagens salvas (offline) — pode estar desatualizado.');
+      }
+    } catch(e) {}
+  }
+
   runNotificationChecks();
   renderAnnouncementBanners();
 
