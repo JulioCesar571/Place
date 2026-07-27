@@ -1901,13 +1901,20 @@ function authClearSession() {
 }
 
 async function authRequest(path, body) {
-  const res = await fetch(SB_BASE + path, {
-    method: 'POST',
-    headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  // Sem isso, uma falta total de internet (fetch nem chega a ter resposta) derrubava
+  // o login inteiro sem cair no caminho legado — o app ficava preso, sem tentar a
+  // verificação local (que já funciona 100% offline, ver verifyPass()).
+  try {
+    const res = await fetch(SB_BASE + path, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch(e) {
+    return { ok: false, status: 0, data: {}, offline: true };
+  }
 }
 
 function cpfToEmail(cpf) { return String(cpf).replace(/\D/g, '') + '@place.local'; }
@@ -1926,11 +1933,13 @@ async function authLogin(cpf, password) {
     // Migrado agora (ou elo reparado) → 2ª tentativa
     r = await authRequest('/auth/v1/token?grant_type=password', { email, password });
     if (r.ok) return { ok: true, session: r.data, justMigrated: !!p.data.migrated };
-    return { ok: false, reason: 'auth_after_provision', detail: r.data };
+    return { ok: false, reason: 'auth_after_provision', detail: r.data, offline: !!r.offline };
   }
   if (p.status === 401) return { ok: false, reason: 'bad_credentials' };
   if (p.status === 404) return { ok: false, reason: 'not_found' };
-  return { ok: false, reason: 'provision_unavailable', detail: p.data };
+  // r.offline e p.offline só ficam true quando o fetch nem chegou a ter resposta
+  // (sem internet mesmo) — diferente de a Edge Function responder com erro.
+  return { ok: false, reason: 'provision_unavailable', detail: p.data, offline: !!(r.offline && p.offline) };
 }
 
 // Renovação do token (expira ~1h)
@@ -3077,9 +3086,14 @@ async function doLogin() {
   } else if (auth.reason === 'not_found') {
     showToast('CPF não cadastrado. Fale com a administração.'); return;
   } else {
-    // Edge Function fora do ar / erro inesperado → login legado (janela de transição)
-    console.warn('[Auth] ponte indisponível (' + auth.reason + '), usando login legado');
-    showToast('⚠️ Autenticação em modo de transição.');
+    // Edge Function fora do ar / erro inesperado / sem internet → login legado
+    if (auth.offline) {
+      console.warn('[Auth] sem internet — tentando login local (offline)');
+      showToast('📴 Sem internet — verificando login salvo neste aparelho...');
+    } else {
+      console.warn('[Auth] ponte indisponível (' + auth.reason + '), usando login legado');
+      showToast('⚠️ Autenticação em modo de transição.');
+    }
   }
 
   // Base atualizada + validação legada (dupla verificação durante a ponte)
