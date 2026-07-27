@@ -2431,6 +2431,27 @@ async function verifyPass(typed, stored) {
   return typed === stored; // conta legada (texto puro)
 }
 
+// ── Verificador local para login OFFLINE ───────────────────────────────────
+// Depois que uma conta é migrada, a senha "de verdade" fica só no Supabase Auth
+// — a cópia em public.users pode ficar desatualizada ou nunca ter chegado
+// nesse aparelho. Por isso, toda vez que um login ONLINE dá certo, guardamos
+// aqui uma confirmação local (hash, nunca a senha em si) pra esse mesmo
+// aparelho conseguir validar a senha de novo mais tarde, mesmo sem internet.
+async function saveOfflineAuthVerifier(cpf, pass) {
+  try {
+    const h = await hashPass('offline-check:' + cpf + ':' + pass);
+    localStorage.setItem('place_offline_auth_' + cpf, h);
+  } catch(e) {}
+}
+async function checkOfflineAuthVerifier(cpf, pass) {
+  try {
+    const stored = localStorage.getItem('place_offline_auth_' + cpf);
+    if (!stored) return false;
+    const h = await hashPass('offline-check:' + cpf + ':' + pass);
+    return h === stored;
+  } catch(e) { return false; }
+}
+
 // ---- STATE ----
 const USERS = {
   '012.345.678-99': { name:'Marcos Rodrigues', pass:'123456', initials:'MR', cpf:'012.345.678-99', role:'passenger', priority:'p1' },
@@ -3080,6 +3101,7 @@ async function doLogin() {
   const auth = await authLogin(cpf, pass);
   if (auth.ok) {
     authSaveSession(auth.session);
+    await saveOfflineAuthVerifier(cpf, pass); // guarda confirmação local p/ próximos logins offline
     if (auth.justMigrated) console.log('[Auth] Conta migrada para o Supabase Auth ✅');
   } else if (auth.reason === 'bad_credentials') {
     showToast('CPF ou senha incorretos'); return;
@@ -3099,7 +3121,15 @@ async function doLogin() {
   // Base atualizada + validação legada (dupla verificação durante a ponte)
   if (!USERS[cpf]) { await dbRefresh(); }
   const user = USERS[cpf];
-  if (!user || (!authSession && !(await verifyPass(pass, user.pass)))) { showToast('CPF ou senha incorretos'); return; }
+  if (!user) { showToast('CPF ou senha incorretos'); return; }
+  if (!authSession) {
+    // Sem sessão real (ponte indisponível ou totalmente offline): aceita se bater
+    // com o verificador local salvo num login online anterior, OU com a senha
+    // legada guardada em USERS (contas antigas nunca migradas).
+    const okOffline = await checkOfflineAuthVerifier(cpf, pass);
+    const okLegacy = await verifyPass(pass, user.pass);
+    if (!okOffline && !okLegacy) { showToast('CPF ou senha incorretos'); return; }
+  }
   // Conta antiga em texto puro ganha hash no 1º login correto
   // (sob as políticas estritas, a gravação pode ser negada para passageiros —
   //  sem problema: a senha real já está protegida no Auth; silencioso de propósito)
