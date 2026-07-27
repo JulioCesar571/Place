@@ -2098,7 +2098,7 @@ async function _dbRefreshRun() {
     // Nada mudou desde a última sincronização? Pula todo o retrabalho
     // (rebuilds de estado + re-render custam caro em celulares fracos)
     const snapshot = _quickHash(JSON.stringify([usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows, annRows])) + ':' + (currentUser ? currentUser.cpf : '');
-    if (snapshot === _lastDbSnapshot) { return; }
+    if (snapshot === _lastDbSnapshot) { return true; }
     _lastDbSnapshot = snapshot;
 
     // LINHAS e PONTOS geridos pelo admin (fallback: valores fixos se tabelas vazias)
@@ -2176,18 +2176,20 @@ async function _dbRefreshRun() {
     presRows.forEach(r => { monitorSeatActive[r.key] = r.active; });
 
     rebuildMonitorSeats(currentBusContext());
-    if (currentUser && currentUser.role === 'passenger') { rebuildUserPassagens(); runNotificationChecks(); }
+    if (currentUser && currentUser.role === 'passenger') { rebuildUserPassagens(true); runNotificationChecks(); }
     refreshVisiblePanels();
+    return true;
   } catch(e) {
     dbOnline = false;
     console.warn('dbRefresh:', e.message);
+    return false;
   }
 }
 
 
 // Reconstrói a lista "Minhas Passagens" do usuário logado a partir do cache local.
 // Necessário quando a sincronização começou ANTES do login (corrida na 1ª carga).
-function rebuildUserPassagens() {
+function rebuildUserPassagens(persist) {
   if (!currentUser) return;
   const today = getTodayStr();
   const todayD = parseTicketDate(today);
@@ -2198,10 +2200,12 @@ function rebuildUserPassagens() {
     .filter(t => { const d = parseTicketDate(travelOf(t)); return d && d >= todayD; })
     .sort((a, b) => parseTicketDate(travelOf(a)) - parseTicketDate(travelOf(b)))
     .forEach(t => passagens.push(t));
-  // Guarda uma cópia local de "Minhas Passagens" só quando os dados são de fato
-  // atuais (sincronização online bem-sucedida) — evita sobrescrever o cache bom
-  // com uma lista vazia quando estamos offline e allPassagens ainda não carregou.
-  if (dbOnline && currentUser.role === 'passenger') {
+  // Guarda uma cópia local de "Minhas Passagens" para uso offline depois — só
+  // quando quem chamou confirma que ESSA sincronização específica deu certo
+  // (persist=true). Sem essa condição, uma reabertura offline (allPassagens
+  // vazio nesta sessão) sobrescreveria o cache bom da sincronização anterior
+  // com uma lista vazia.
+  if (persist && currentUser.role === 'passenger') {
     try { localStorage.setItem('place_my_tickets_' + currentUser.cpf, JSON.stringify(passagens)); } catch(e) {}
   }
 }
@@ -3170,14 +3174,18 @@ async function loginSuccess(user) {
   selected.clear();
 
   // Sincroniza antes de decidir a tela inicial (passagens vêm do banco)
-  await dbRefresh();
+  const syncOk = await dbRefresh();
   // A sincronização pode ter começado antes do login — reconstrói do cache
   rebuildUserPassagens();
 
-  // Offline (ou banco fora do ar) e nada sincronizou agora? Usa a última cópia
-  // salva localmente na sincronização boa anterior — sem isso, o app achava que
-  // o passageiro não tinha nenhuma reserva e voltava pra tela de escolher ônibus.
-  if (!dbOnline && passagens.length === 0) {
+  // Essa tentativa de sincronizar falhou (offline ou banco fora do ar) e nada
+  // sincronizou agora? Usa a última cópia salva localmente na sincronização boa
+  // anterior — sem isso, o app achava que o passageiro não tinha nenhuma
+  // reserva e voltava pra tela de escolher ônibus. IMPORTANTE: usamos o retorno
+  // de dbRefresh() (sobre ESSA tentativa específica), não a flag global
+  // dbOnline — essa fica true assim que QUALQUER chamada solta ao banco success,
+  // mesmo que a sincronização de passagens em si tenha falhado.
+  if (!syncOk && passagens.length === 0) {
     try {
       const cached = JSON.parse(localStorage.getItem('place_my_tickets_' + user.cpf) || '[]');
       if (cached.length) {
