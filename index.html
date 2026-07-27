@@ -1771,6 +1771,13 @@ body{-webkit-tap-highlight-color:transparent;}
         </div>
         <div class="filter-bar">
           <input type="text" class="admin-search" id="users-search" placeholder="🔍 Buscar usuário por nome ou CPF..." oninput="renderUsersMgmt()">
+          <span id="users-count-badge" style="white-space:nowrap;font-size:13px;font-weight:600;color:var(--c5);background:var(--c1);border-radius:20px;padding:6px 14px;">0 usuários</span>
+        </div>
+        <div class="export-btns">
+          <button class="export-btn btn-xlsx" onclick="exportUsersXLSX()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-3.5 5l1.5 2.5L9.5 17H8l2-3.2L8.1 11H9.5l1 1.8 1-1.8H13l-1.9 2.8 2 3.2H11.5l-1.5-2.5z"/></svg>
+            Exportar Excel
+          </button>
         </div>
         <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--c2);">
           <table class="user-mgmt-table">
@@ -2506,6 +2513,8 @@ function renderUsersMgmt() {
     .filter(u => !q || u.name.toLowerCase().includes(q) || u.cpf.includes(q));
   const emptyEl = document.getElementById('users-empty');
   if (emptyEl) emptyEl.style.display = users.length === 0 ? 'block' : 'none';
+  const countEl = document.getElementById('users-count-badge');
+  if (countEl) countEl.textContent = users.length === 1 ? '1 usuário' : `${users.length} usuários`;
 
   tbody.innerHTML = users.map(u => {
     const key = u.cpf.replace(/\D/g,'');
@@ -6261,6 +6270,34 @@ function exportXLSX() {
   const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Passageiros"><Table><Row>${hRow}</Row>${dRows}</Table></Worksheet></Workbook>`;
   const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   downloadBlob(blob, 'passageiros_paradiso_' + getFileDateStr() + '.xls');
+  showToast('Excel exportado com sucesso!');
+}
+
+// Exportação da lista de Níveis de Prioridade (respeita o filtro de busca ativo)
+function exportUsersXLSX() {
+  const q = ((document.getElementById('users-search') || {}).value || '').toLowerCase().trim();
+  const users = Object.values(USERS).filter(u => u.role === 'passenger' || u.role === 'monitor')
+    .filter(u => !q || u.name.toLowerCase().includes(q) || u.cpf.includes(q));
+  if (!users.length) { showToast('Nenhum usuário para exportar'); return; }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const headers = ['#','Nome','CPF','Nível/Papel','Linha (monitor)','Poltrona (monitor)'];
+  const hRow = headers.map(h => `<Cell><Data ss:Type="String">${esc(h)}</Data></Cell>`).join('');
+  const dRows = users.map((u,i) => {
+    let nivel, linha = '—', poltrona = '—';
+    if (u.role === 'monitor') {
+      nivel = 'Monitor';
+      linha = (BUSES.find(b=>b.id===u.busId)||{}).name || u.busId || '—';
+      poltrona = u.seat != null ? String(u.seat) : '—';
+    } else {
+      const p = getPriority(u);
+      nivel = p === 'p1' ? 'Prioridade 1' : p === 'p2' ? 'Prioridade 2' : p === 'blocked' ? 'Bloqueado' : (p || '—');
+    }
+    const vals = [i+1, u.name, u.cpf, nivel, linha, poltrona];
+    return '<Row>' + vals.map(v => `<Cell><Data ss:Type="String">${esc(v)}</Data></Cell>`).join('') + '</Row>';
+  }).join('');
+  const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Usuarios"><Table><Row>${hRow}</Row>${dRows}</Table></Worksheet></Workbook>`;
+  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  downloadBlob(blob, 'usuarios_place_' + getFileDateStr() + '.xls');
   showToast('Excel exportado com sucesso!');
 }
 
