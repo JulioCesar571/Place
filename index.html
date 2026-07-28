@@ -6255,7 +6255,11 @@ function getFilteredPassagens() {
 
 function renderAdminStats() {
   const today = getTodayStr();
-  const todayP = allPassagens.filter(t => t.date.startsWith(today));
+  const travelOf = t => t.travelDate || (t.date ? t.date.slice(0,10) : null);
+  // Filtra por dia REAL de viagem, não pelo dia em que a reserva foi feita —
+  // senão reservas feitas com antecedência (comum, já que reservas são
+  // semanais) nunca apareceriam nas estatísticas de "hoje".
+  const todayP = allPassagens.filter(t => travelOf(t) === today);
   document.getElementById('adm-total').textContent = todayP.length;
   document.getElementById('adm-boarded').textContent = todayP.filter(t => t.boardedAt).length;
   document.getElementById('adm-absent').textContent = todayP.filter(t => !t.boardedAt && isBoardingPast(t) && !t.cancelled).length;
