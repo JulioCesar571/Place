@@ -2066,7 +2066,26 @@ function dbPatchTicket(code, fields) { return sb('/tickets?code=eq.' + encodeURI
 function dbInsertHistory(cpf, h) {
   return sb('/history', { method: 'POST', prefer: 'resolution=ignore-duplicates', body: JSON.stringify([{
     cpf, code: h.code, date: h.date || null, seat: String(h.seat || ''), local: h.local || null, bus: h.bus || null, status: h.status
-  }]) }).catch(dbErr);
+  }]) }).catch(e => {
+    // Diagnóstico: registra QUEM estava logado e PARA QUE CPF tentou gravar —
+    // essencial pra descobrir se o problema é o crachá (JWT) do usuário logado
+    // não bater com o que a política de segurança espera. Mostra na TELA
+    // também (não só no console) — o monitor testa pelo celular, com câmera,
+    // sem acesso fácil ao DevTools.
+    const quem = currentUser ? currentUser.cpf : '(ninguém)';
+    const papel = currentUser ? currentUser.role : '?';
+    const temSessao = !!authSession;
+    console.warn(
+      '[history] falha ao gravar — cpf_destino=' + cpf + ' status=' + h.status +
+      ' | logado_como=' + quem + ' role=' + papel + ' tem_sessao_real=' + temSessao +
+      ' | erro=' + e.message
+    );
+    showToast('⚠️ Histórico não gravado — logado=' + papel + ' sessão_real=' + (temSessao ? 'sim' : 'não') + ' — tire print disso', 10000);
+    // Não chama dbErr(e) aqui: isso NÃO é falta de conexão (a chamada chegou ao
+    // banco e foi recusada por permissão) — dbErr marcaria dbOnline=false
+    // incorretamente e, pior, mostraria seu próprio aviso por cima do nosso
+    // diagnóstico antes do usuário conseguir ler.
+  });
 }
 function dbJoinWaitlist(w)    { return sb('/waitlist', { method: 'POST', prefer: 'resolution=ignore-duplicates', body: JSON.stringify([{ cpf: w.cpf, name: w.name }]) }).catch(dbErr); }
 function dbLeaveWaitlist(cpf) { return sb('/waitlist?cpf=eq.' + encodeURIComponent(cpf), { method: 'DELETE' }).catch(dbErr); }
@@ -6477,10 +6496,11 @@ function downloadBlob(blob, filename) {
 }
 
 // ---- TOAST ----
-function showToast(msg) {
+function showToast(msg, duration) {
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3500);
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>t.classList.remove('show'), duration || 3500);
 }
 </script>
 </body>
