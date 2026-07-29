@@ -5339,7 +5339,11 @@ function renderDashboard() {
   const absentByUser = {};
 
   allPassagens.forEach(t => {
-    const d = parseTicketDate(t.reservedAt || t.date);
+    // Agrupa e decide "ausente" pelo dia REAL da viagem, não pelo dia da reserva —
+    // senão toda reserva antecipada (o normal aqui, já que abre com 1 semana de
+    // antecedência) contava como falta antes mesmo do dia da viagem chegar.
+    const travelOf = t.travelDate || (t.date ? t.date.slice(0, 10) : null);
+    const d = parseTicketDate(travelOf);
     if (!d) return;
     const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     const b = buckets[key];
@@ -5348,7 +5352,7 @@ function renderDashboard() {
     b.days.add(d.toLocaleDateString('pt-BR'));
     if (t.cancelled) { b.cancelled++; return; }
     if (t.boardedAt) b.boarded++;
-    else if (isBoardingPast(t) || d < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+    else if (isBoardingPast(t)) {
       b.absent++;
       const label = t.passenger + '|' + t.cpf;
       absentByUser[label] = (absentByUser[label] || 0) + 1;
