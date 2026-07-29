@@ -5532,7 +5532,10 @@ async function subscribeToPush() {
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
     }
     const json = sub.toJSON();
-    await sb('/push_subscriptions', {
+    // on_conflict=endpoint é essencial: sem isso, o PostgREST tenta o upsert pela
+    // chave primária (id, que nunca enviamos, pois é autogerada) — cai num INSERT
+    // simples, que sempre colide com a constraint única de "endpoint" e falha.
+    await sb('/push_subscriptions?on_conflict=endpoint', {
       method: 'POST',
       prefer: 'resolution=merge-duplicates',
       body: JSON.stringify([{ cpf: currentUser.cpf, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth }])
