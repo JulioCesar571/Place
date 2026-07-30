@@ -2620,7 +2620,7 @@ function renderUsersMgmt() {
     const nameIcon = u.role === 'monitor' ? '⭐ ' : '';
 
     return `<tr>
-      <td style="font-weight:500;">${nameIcon}${u.name}${customTag}</td>
+      <td style="font-weight:500;">${nameIcon}${escapeHtml(u.name)}${customTag}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--c5);">${u.cpf}</td>
       <td>${currentBadge}</td>
       <td>
@@ -3079,11 +3079,11 @@ function renderPassagens() {
       <div class="passagem-card-body">
         <div class="pc-info-row">
           <div class="pc-info"><div class="pc-info-label">Poltrona</div><div class="pc-info-val">${t.seat}</div></div>
-          <div class="pc-info"><div class="pc-info-label">Embarque</div><div class="pc-info-val">${t.local}</div></div>
-          <div class="pc-info"><div class="pc-info-label">Passageiro</div><div class="pc-info-val">${t.passenger}</div></div>
+          <div class="pc-info"><div class="pc-info-label">Embarque</div><div class="pc-info-val">${escapeHtml(t.local)}</div></div>
+          <div class="pc-info"><div class="pc-info-label">Passageiro</div><div class="pc-info-val">${escapeHtml(t.passenger)}</div></div>
           <div class="pc-info"><div class="pc-info-label">Viagem</div><div class="pc-info-val" style="font-weight:700;color:var(--c6);">${t.travelDate || t.date.slice(0,10)}</div></div>
           <div class="pc-info"><div class="pc-info-label">Reservada em</div><div class="pc-info-val">${t.date}</div></div>
-          ${t.cancelled && t.cancelReason ? `<div class="pc-info" style="flex-basis:100%;"><div class="pc-info-label">Motivo do cancelamento</div><div class="pc-info-val" style="color:#922b21;font-size:12px;">${t.cancelReason}</div></div>` : ''}
+          ${t.cancelled && t.cancelReason ? `<div class="pc-info" style="flex-basis:100%;"><div class="pc-info-label">Motivo do cancelamento</div><div class="pc-info-val" style="color:#922b21;font-size:12px;">${escapeHtml(t.cancelReason)}</div></div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           ${!t.cancelled ? `<button onclick="event.stopPropagation();openCancelFromList(${i})" style="background:none;border:1.5px solid #e24b4a;color:#c0392b;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;padding:6px 12px;border-radius:10px;cursor:pointer;">Cancelar</button>` : ''}
@@ -3319,7 +3319,7 @@ function buildCabin() {
       el.innerHTML = `<span style="font-size:14px">⭐</span><span class="seat-name">Monitor</span>`;
     } else if (isOcc) {
       const pName = occupied.get(num) || '';
-      const firstName = pName.split(' ')[0];
+      const firstName = escapeHtml(pName.split(' ')[0]);
       el.setAttribute('title', pName);
       el.setAttribute('data-passenger', pName);
       el.innerHTML = seatSVG + `<span class="seat-name">${firstName}</span>`;
@@ -4419,11 +4419,11 @@ function buildBoardingMap() {
       cls = 'bs-monitor'; content = `<span>⭐</span><span class="b-name">Monitor</span>`;
     } else if (boardedSeats.has(num)) {
       cls = 'bs-boarded';
-      const name = (occupied.get(num) || '').split(' ')[0] || num;
+      const name = escapeHtml((occupied.get(num) || '').split(' ')[0] || num);
       content = `${seatSVGsmall}<span class="b-name">${name}</span>`;
     } else if (occupied.has(num)) {
       cls = 'bs-occupied';
-      const name = (occupied.get(num) || '').split(' ')[0] || num;
+      const name = escapeHtml((occupied.get(num) || '').split(' ')[0] || num);
       content = `${seatSVGsmall}<span class="b-name">${name}</span>`;
     } else {
       cls = 'bs-free'; content = `${seatSVGsmall}<span class="b-num">${num}</span>`;
@@ -4699,7 +4699,7 @@ async function processMonitorScan(raw) {
       card.className = 'scan-result-card invalid';
       icon.textContent = '🚫';
       title.textContent = 'Passagem Cancelada';
-      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Esta passagem foi cancelada e não é válida para embarque.`;
+      detail.innerHTML = `Passageiro: <span>${escapeHtml(data.passenger)}</span><br>Esta passagem foi cancelada e não é válida para embarque.`;
       resultEl.classList.add('show');
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
@@ -4708,7 +4708,7 @@ async function processMonitorScan(raw) {
       card.className = 'scan-result-card wrong-bus';
       icon.textContent = '⚠️';
       title.textContent = 'Passagem Já Utilizada';
-      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Embarque já registrado às <span>${data.boardedAt}</span>.`;
+      detail.innerHTML = `Passageiro: <span>${escapeHtml(data.passenger)}</span><br>Embarque já registrado às <span>${data.boardedAt}</span>.`;
       resultEl.classList.add('show');
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
@@ -4720,7 +4720,7 @@ async function processMonitorScan(raw) {
       card.className = 'scan-result-card wrong-bus';
       icon.textContent = '📅';
       title.textContent = 'Passagem de Outro Dia';
-      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Esta passagem é para <span>${tDay}</span> — hoje é ${getTodayStr()}.`;
+      detail.innerHTML = `Passageiro: <span>${escapeHtml(data.passenger)}</span><br>Esta passagem é para <span>${tDay}</span> — hoje é ${getTodayStr()}.`;
       resultEl.classList.add('show');
       resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
@@ -4731,7 +4731,7 @@ async function processMonitorScan(raw) {
       card.className = 'scan-result-card wrong-bus';
       icon.textContent = '⚠️';
       title.textContent = 'Ônibus Incorreto!';
-      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br><br>Você embarcou no ônibus errado!<br>Seu ônibus é o <span>${correctBus}</span>,<br>se dirija a ele e boa viagem! 🚌`;
+      detail.innerHTML = `Passageiro: <span>${escapeHtml(data.passenger)}</span><br><br>Você embarcou no ônibus errado!<br>Seu ônibus é o <span>${escapeHtml(correctBus)}</span>,<br>se dirija a ele e boa viagem! 🚌`;
     } else {
       // Register passenger in occupied map so boarding map shows their name
       data.seat.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
@@ -4759,7 +4759,7 @@ async function processMonitorScan(raw) {
       card.className = 'scan-result-card valid';
       icon.textContent = '✅';
       title.textContent = 'Embarque Autorizado!';
-      detail.innerHTML = `Passageiro: <span>${data.passenger}</span><br>Poltrona: <span>${data.seat}</span> · Embarque: <span>${data.local}</span><br>Linha: <span>${data.busName || '—'}</span> · Código: <span>${data.code}</span>`;
+      detail.innerHTML = `Passageiro: <span>${escapeHtml(data.passenger)}</span><br>Poltrona: <span>${data.seat}</span> · Embarque: <span>${escapeHtml(data.local)}</span><br>Linha: <span>${escapeHtml(data.busName || '—')}</span> · Código: <span>${data.code}</span>`;
       markBoarded(data.seat);
     }
   } catch(e) {
@@ -6337,11 +6337,11 @@ function renderAdminTable() {
     return `
     <tr>
       <td style="color:var(--c5);font-size:12px;">${i + 1}</td>
-      <td class="td-name">${t.passenger}</td>
+      <td class="td-name">${escapeHtml(t.passenger)}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--c5);">${t.cpf}</td>
       <td class="td-seat">${t.seat}</td>
-      <td style="font-size:12px;color:var(--c5);white-space:nowrap;">${t.busName || '—'}</td>
-      <td><span class="td-badge">${t.local}</span></td>
+      <td style="font-size:12px;color:var(--c5);white-space:nowrap;">${escapeHtml(t.busName || '—')}</td>
+      <td><span class="td-badge">${escapeHtml(t.local)}</span></td>
       <td style="font-size:12px;color:var(--c5);white-space:nowrap;">${t.travelDate || (t.date ? t.date.slice(0,10) : '—')}</td>
       <td class="td-datetime">${t.reservedAt || t.date}<small>Reserva</small></td>
       ${boardedCell.replace('</td>','<small>Embarque</small></td>')}
@@ -6467,9 +6467,9 @@ function exportPDF() {
   const tableRows = rows.map((t,i) => {
     const status = t.cancelled ? '🚫 Cancelado' : (t.boardedAt ? '✅ Embarcou' : (isBoardingPast(t) ? '❌ Ausente' : '⏳ Aguardando'));
     return `<tr>
-      <td>${i+1}</td><td>${t.passenger}</td><td>${t.cpf}</td>
+      <td>${i+1}</td><td>${escapeHtml(t.passenger)}</td><td>${t.cpf}</td>
       <td style="text-align:center;font-weight:700;color:#1B6B62">${t.seat}</td>
-      <td>${t.busName||'—'}</td><td>${t.local}</td><td>${t.travelDate || (t.date ? t.date.slice(0,10) : '—')}</td><td>${t.reservedAt||t.date}</td><td>${t.boardedAt||'—'}</td><td>${status}</td>
+      <td>${escapeHtml(t.busName||'—')}</td><td>${escapeHtml(t.local)}</td><td>${t.travelDate || (t.date ? t.date.slice(0,10) : '—')}</td><td>${t.reservedAt||t.date}</td><td>${t.boardedAt||'—'}</td><td>${status}</td>
     </tr>`;
   }).join('');
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relação de Passageiros</title>
