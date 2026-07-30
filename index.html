@@ -3427,12 +3427,18 @@ function updateUI() {
 }
 
 // ---- CONFIRM SEATS → TICKET ----
+let _confirmandoReserva = false; // trava contra duplo clique/reenvio duplicado
 async function confirmSeats() {
+  if (_confirmandoReserva) return; // já está processando um envio — ignora clique repetido
   if(!currentUser) return;
   if (getPriority(currentUser) === 'blocked') { showScreen('blocked'); return; }
   if (selectedTravelDays.length === 0) { showToast('Selecione os dias de viagem primeiro.'); showWeekScreen(); return; }
   const nums = Array.from(selected.keys()).sort((a,b)=>a-b);
   if(nums.length===0) return;
+  _confirmandoReserva = true;
+  const btn = document.getElementById('confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
+  try {
   const firstNum = nums[0];
   const firstLocal = selected.get(firstNum).local;
   const now = new Date();
@@ -3494,6 +3500,10 @@ async function confirmSeats() {
   updatePassagensBadge();
   showTicketScreen();
   showToast(`✅ ${createdTickets.length} passagem(ns) emitida(s) — poltrona ${nums.join(', ')} nos dias selecionados.`);
+  } finally {
+    _confirmandoReserva = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirmar Reserva'; }
+  }
 }
 
 // ---- SCAN / VALIDATE ----
