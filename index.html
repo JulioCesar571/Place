@@ -1991,7 +1991,16 @@ async function authRefresh() {
     try {
       const r = await authRequest('/auth/v1/token?grant_type=refresh_token', { refresh_token: authSession.refresh_token });
       if (r.ok) { authSaveSession(r.data); return true; }
+      if (r.offline) return false; // sem internet agora — não mata a sessão, pode ser temporário
+      // O servidor respondeu e recusou o refresh_token de propósito (expirado/
+      // revogado) — a sessão realmente morreu. Sem isso, o app ficava preso
+      // silenciosamente reusando credenciais mortas em toda chamada (é o que
+      // gerava aquela sequência de 401 no console, sem nenhum aviso pro usuário).
       authClearSession();
+      if (currentUser) {
+        showToast('🔒 Sua sessão expirou. Faça login novamente.', 6000);
+        doLogout();
+      }
       return false;
     } finally {
       _refreshPromise = null;
