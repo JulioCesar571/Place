@@ -462,6 +462,9 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 .btn-week-back{width:100%;padding:11px;background:none;border:none;color:var(--c5);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;}
 .days-header-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;}
 .dh-chip{background:var(--c1);border:1px solid var(--c3);color:var(--c6);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+.dh-chip.dh-atual{background:var(--c4);border-color:var(--c4);color:#fff;}
+.dh-chip.dh-feito{opacity:0.55;}
+.dh-progress{width:100%;font-size:12px;font-weight:700;color:var(--c6);margin-bottom:4px;}
 
 
 /* ===== BOTÃO SAIR FLUTUANTE ===== */
@@ -3286,13 +3289,23 @@ function doLogout() {
 // ---- BUILD CABIN ----
 function buildCabin() {
   rebuildMonitorSeats(selectedBus ? selectedBus.id : null);
-  // Ocupação = união dos dias de viagem selecionados (reserva semanal)
-  const weekOcc = (currentUser && currentUser.role === 'passenger' && selectedTravelDays.length)
-    ? getOccupiedForDays(selectedTravelDays, selectedBus ? selectedBus.id : null)
+  // Ocupação = só o dia ATUAL sendo reservado (reserva dia a dia) — antes era a
+  // união de todos os dias selecionados, o que fazia uma poltrona livre na
+  // maioria dos dias aparecer "ocupada" pra semana toda só por estar tomada
+  // em UM dia específico.
+  const currentDay = getCurrentReservingDay();
+  const weekOcc = (currentUser && currentUser.role === 'passenger' && currentDay)
+    ? getOccupiedForDays([currentDay], selectedBus ? selectedBus.id : null)
     : null;
+  const confirmBtn = document.getElementById('confirm-btn');
+  if (confirmBtn && currentUser && currentUser.role === 'passenger' && currentDay) {
+    confirmBtn.textContent = selectedTravelDays.length > 1
+      ? `Confirmar poltrona — ${currentDay.slice(0,5)}`
+      : 'Confirmar Reserva';
+  }
   occupied.clear();
   if (weekOcc) {
-    weekOcc.forEach((info, seat) => occupied.set(seat, info.passenger + (info.days.length < selectedTravelDays.length ? ' (' + info.days.join(', ') + ')' : '')));
+    weekOcc.forEach((info, seat) => occupied.set(seat, info.passenger));
   } else {
     // Contexto monitor/sem seleção: ocupação de HOJE no ônibus em exibição
     const today = getTodayStr();
@@ -3426,40 +3439,37 @@ function updateUI() {
   tags.innerHTML = selArr.map(num => `<span class="sel-tag">${num} <button onclick="removeSeat(${num})">×</button></span>`).join('');
 }
 
-// ---- CONFIRM SEATS → TICKET ----
+// ---- CONFIRM SEATS → TICKET (dia a dia) ----
 let _confirmandoReserva = false; // trava contra duplo clique/reenvio duplicado
 async function confirmSeats() {
   if (_confirmandoReserva) return; // já está processando um envio — ignora clique repetido
   if(!currentUser) return;
   if (getPriority(currentUser) === 'blocked') { showScreen('blocked'); return; }
   if (selectedTravelDays.length === 0) { showToast('Selecione os dias de viagem primeiro.'); showWeekScreen(); return; }
+  const day = getCurrentReservingDay();
+  if (!day) { switchPanel('passagens'); return; } // segurança: todos os dias já têm reserva
   const nums = Array.from(selected.keys()).sort((a,b)=>a-b);
   if(nums.length===0) return;
   _confirmandoReserva = true;
   const btn = document.getElementById('confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Confirmando...'; }
   try {
-  const firstNum = nums[0];
-  const firstLocal = selected.get(firstNum).local;
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  const busId   = selectedBus ? selectedBus.id   : '—';
-  const busName = selectedBus ? selectedBus.name : 'Place';
+    const firstNum = nums[0];
+    const firstLocal = selected.get(firstNum).local;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const busId   = selectedBus ? selectedBus.id   : '—';
+    const busName = selectedBus ? selectedBus.name : 'Place';
 
-  // Revalida disponibilidade em cada dia (alguém pode ter reservado nesse meio-tempo)
-  const occNow = getOccupiedForDays(selectedTravelDays, busId);
-  const conflict = nums.find(n => occNow.has(n));
-  if (conflict) {
-    const info = occNow.get(conflict);
-    showToast(`⚠️ A poltrona ${conflict} acabou de ser reservada (${info.days.join(', ')}). Escolha outra.`);
-    buildCabin(); updateUI();
-    return;
-  }
+    // Revalida disponibilidade SÓ DO DIA ATUAL (alguém pode ter reservado nesse meio-tempo)
+    const occNow = getOccupiedForDays([day], busId);
+    const conflict = nums.find(n => occNow.has(n));
+    if (conflict) {
+      showToast(`⚠️ A poltrona ${conflict} acabou de ser reservada para ${day.slice(0,5)}. Escolha outra.`);
+      buildCabin(); updateUI();
+      return;
+    }
 
-  // Um ticket por dia de viagem — o banco valida conflito de poltrona (trigger)
-  const createdTickets = [];
-  const failedDays = [];
-  for (const day of selectedTravelDays) {
     const code = 'PDS-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-' + firstNum;
     const t = {
       passenger: currentUser.name,
@@ -3475,31 +3485,49 @@ async function confirmSeats() {
       bus: 'Place',
       valid: true
     };
+
+    let created = false;
     try {
       await dbInsertTicketStrict(t);
       passagens.push({...t});
       allPassagens.push({...t});
-      createdTickets.push(t);
+      created = true;
     } catch(err) {
-      if (String(err.message).includes('SEAT_TAKEN')) failedDays.push(day);
-      else { dbErr(err); passagens.push({...t}); allPassagens.push({...t}); createdTickets.push(t); }
+      if (String(err.message).includes('SEAT_TAKEN')) {
+        showToast(`⚠️ Poltrona ${nums.join(', ')} acabou de ser ocupada para ${day.slice(0,5)}. Escolha outra.`);
+        buildCabin(); updateUI();
+        return;
+      }
+      dbErr(err);
+      passagens.push({...t});
+      allPassagens.push({...t});
+      created = true;
     }
-  }
+    if (!created) return;
 
-  if (failedDays.length) {
-    showToast(`⚠️ Poltrona ocupada por outra pessoa em: ${failedDays.map(d=>d.slice(0,5)).join(', ')}. Dias restantes confirmados — escolha outra poltrona para esses.`);
-    _lastDbSnapshot = '';
-    dbRefresh();
-  }
-  if (createdTickets.length === 0) { buildCabin(); updateUI(); return; }
+    currentTicket = t;
+    updatePassagensBadge();
+    selected.clear();
 
-  currentTicket = createdTickets[0];
-  nums.forEach(num => { selected.delete(num); });
-  buildCabin();
-  updateUI();
-  updatePassagensBadge();
-  showTicketScreen();
-  showToast(`✅ ${createdTickets.length} passagem(ns) emitida(s) — poltrona ${nums.join(', ')} nos dias selecionados.`);
+    const nextDay = getCurrentReservingDay();
+    if (nextDay) {
+      // Ainda tem dia(s) pendente(s) — avança pro próximo, mostrando a
+      // ocupação REAL daquele dia específico (pode ter poltronas diferentes
+      // livres/ocupadas em relação ao dia anterior)
+      showToast(`✅ Poltrona ${nums.join(', ')} confirmada para ${day.slice(0,5)}. Escolha a poltrona do próximo dia.`);
+      buildCabin();
+      updateUI();
+      renderDaysHeaderChips();
+    } else {
+      // Último dia confirmado — vai pra "Minhas Passagens", que já lista cada
+      // dia como uma reserva própria (poltronas podem ter ficado diferentes
+      // entre os dias, e é assim mesmo que deve aparecer agora)
+      buildCabin();
+      updateUI();
+      renderDaysHeaderChips();
+      switchPanel('passagens');
+      showToast(`✅ Todas as reservas da semana confirmadas!`);
+    }
   } finally {
     _confirmandoReserva = false;
     if (btn) { btn.disabled = false; btn.textContent = 'Confirmar Reserva'; }
@@ -4221,6 +4249,14 @@ const WEEK_CUTOFF_HOUR = 18; // hora da véspera em que o dia fecha para reserva
 
 let selectedTravelDays = []; // ['dd/mm/yyyy', ...]
 
+// Reserva agora é dia a dia: em vez de guardar "em qual dia estou" como um
+// índice (frágil — desalinha se a lista de dias mudar no meio do processo),
+// calculamos sempre o PRÓXIMO dia selecionado que ainda não tem reserva
+// confirmada. Isso é imune a qualquer mudança na seleção de dias.
+function getCurrentReservingDay() {
+  return selectedTravelDays.find(d => !passagens.some(p => !p.cancelled && p.travelDate === d));
+}
+
 function fmtDay(d) { return d.toLocaleDateString('pt-BR'); }
 
 // ═══ CICLO SEMANAL DE RESERVAS ═══
@@ -4312,14 +4348,11 @@ function renderWeekGrid() {
 }
 
 function toggleTravelDay(str) {
+  const already = passagens.find(p => !p.cancelled && p.travelDate === str);
+  if (already) { showToast(`Você já tem reserva para ${str} (poltrona ${already.seat}). Cancele-a em "Minhas Passagens" antes de refazer.`); return; }
   const idx = selectedTravelDays.indexOf(str);
   if (idx >= 0) selectedTravelDays.splice(idx, 1);
-  else {
-    // Impede duplicar reserva no mesmo dia
-    const already = passagens.find(p => !p.cancelled && p.travelDate === str);
-    if (already) { showToast(`Você já tem reserva para ${str} (poltrona ${already.seat}). Cancele-a antes de refazer.`); return; }
-    selectedTravelDays.push(str);
-  }
+  else selectedTravelDays.push(str);
   selectedTravelDays.sort((a, b) => parseTicketDate(a) - parseTicketDate(b));
   renderWeekGrid();
 }
@@ -4340,6 +4373,7 @@ function confirmWeekDays() {
   if (selectedTravelDays.length === 0) return;
   document.getElementById('selected-bus-name').textContent = selectedBus.name;
   document.getElementById('app-bus-sub').textContent = `Linha: ${selectedBus.name} · ${selectedTravelDays.map(s=>s.slice(0,5)).join(' · ')}`;
+  selected.clear();
   buildCabin();
   showScreen('app');
   switchPanel('seats');
@@ -4356,7 +4390,18 @@ function renderDaysHeaderChips() {
     wrap.className = 'days-header-chips';
     sidebar.prepend(wrap);
   }
-  wrap.innerHTML = selectedTravelDays.map(s => `<span class="dh-chip">📅 ${s.slice(0,5)}</span>`).join('') +
+  const total = selectedTravelDays.length;
+  const atual = getCurrentReservingDay();
+  const feitos = selectedTravelDays.filter(d => passagens.some(p => !p.cancelled && p.travelDate === d)).length;
+  const progresso = total
+    ? `<div class="dh-progress">Poltrona do dia ${Math.min(feitos + 1, total)} de ${total}</div>`
+    : '';
+  wrap.innerHTML = progresso + selectedTravelDays.map(s => {
+    const feito = passagens.some(p => !p.cancelled && p.travelDate === s);
+    const ehAtual = s === atual;
+    const icon = feito ? '✅' : (ehAtual ? '📍' : '📅');
+    return `<span class="dh-chip${ehAtual ? ' dh-atual' : ''}${feito ? ' dh-feito' : ''}">${icon} ${s.slice(0,5)}</span>`;
+  }).join('') +
     `<span class="dh-chip" style="cursor:pointer;background:#fff;" onclick="showWeekScreen()">✏️ alterar dias</span>`;
 }
 
