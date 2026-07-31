@@ -4872,7 +4872,7 @@ async function createUser() {
   if (name.length < 3) { nameInput.classList.add('invalid'); cuShowError('Informe o nome completo (mínimo 3 caracteres).'); return; }
   if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(cpf)) { cpfInput.classList.add('invalid'); cuShowError('CPF inválido. Use o formato 000.000.000-00.'); return; }
   if (USERS[cpf]) { cpfInput.classList.add('invalid'); cuShowError('Já existe um usuário cadastrado com este CPF.'); return; }
-  if (pass.length < 4) { passInput.classList.add('invalid'); cuShowError('A senha deve ter no mínimo 4 caracteres.'); return; }
+  if (pass.length < 6) { passInput.classList.add('invalid'); cuShowError('A senha deve ter no mínimo 6 caracteres (exigência do sistema de login).'); return; }
 
   const newUser = {
     name, cpf, pass: await hashPass(pass),
@@ -4957,8 +4957,8 @@ async function processUserRows(rows) {
     if (name.length < 3) { skipped.push(`Linha ${line}: nome inválido`); continue; }
     if (!cpf) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): CPF inválido`); continue; }
     if (USERS[cpf]) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): CPF já cadastrado`); continue; }
-    if (!pass) pass = cpf.replace(/\D/g, '').slice(-4); // últimos 4 dígitos
-    if (pass.length < 4) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): senha muito curta`); continue; }
+    if (!pass) pass = cpf.replace(/\D/g, '').slice(-6); // últimos 6 dígitos (mínimo exigido pelo sistema de login)
+    if (pass.length < 6) { skipped.push(`Linha ${line} (${name.split(' ')[0]}): senha muito curta (mínimo 6 caracteres)`); continue; }
 
     const u = { name, cpf, pass: await hashPass(pass), initials: getInitials(name), role, custom: true };
     if (role === 'passenger') { u.priority = priority; }
@@ -5142,7 +5142,7 @@ async function saveEditUser() {
   if (name.length < 3) { euShowError('Informe o nome completo (mínimo 3 caracteres).'); return; }
   if (!/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(newCpf)) { euShowError('CPF inválido. Use o formato 000.000.000-00.'); return; }
   if (newCpf !== editingCpf && USERS[newCpf]) { euShowError('Já existe outro usuário com este CPF.'); return; }
-  if (pass && pass.length < 4) { euShowError('A nova senha deve ter no mínimo 4 caracteres (ou deixe em branco para manter).'); return; }
+  if (pass && pass.length < 6) { euShowError('A nova senha deve ter no mínimo 6 caracteres (exigência do sistema de login) — ou deixe em branco para manter a atual.'); return; }
 
   const finalPass = pass ? await hashPass(pass) : orig.pass;
   // Conta já migrada para o Auth? A senha REAL vive lá — redefine no servidor
