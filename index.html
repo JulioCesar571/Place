@@ -517,6 +517,8 @@ body{-webkit-tap-highlight-color:transparent;}
 .rtc-mon{background:#FFF8DC;color:#7A5800;border:1px solid #D4A017;}
 .rtc-board{background:#E8F5F3;color:#0F6E56;border:1px solid #7EC8BC;}
 .ms-reserved{background:var(--c4);}
+.ms-partial-ida{background:#3B82C4;color:#fff;}
+.ms-partial-volta{background:#D4720B;color:#fff;}
 
 /* Visão simultânea de todas as linhas */
 .rt-occ-grid.all-mode{grid-template-columns:1fr;}
@@ -4366,6 +4368,15 @@ function getBookingCycle() {
   closeAt.setDate(anchor.getDate() + WEEK_CLOSE_OFFSET);
   closeAt.setHours(WEEK_CLOSE_HOUR, 0, 0, 0);
 
+  // ── EXCEÇÃO PONTUAL — só para o fechamento de 01/08/2026 ──────────────
+  // A pedido da associação, o prazo dessa semana específica foi estendido até
+  // domingo 02/08/2026 às 23h59 (em vez do sábado 01/08 às 20h de costume).
+  // Não é uma mudança de regra — a próxima semana já fecha sábado 20h
+  // normalmente. Pode remover este bloco quando essa data já tiver passado.
+  if (closeAt.getFullYear() === 2026 && closeAt.getMonth() === 7 && closeAt.getDate() === 1) {
+    closeAt.setTime(new Date(2026, 7, 2, 23, 59, 59).getTime());
+  }
+
   // Próxima abertura: segunda seguinte às 08h
   const nextOpen = new Date(anchor);
   nextOpen.setDate(anchor.getDate() + 7);
@@ -6007,9 +6018,16 @@ function computeBusOcc(day, busId) {
   let reserved = 0, boarded = 0;
   for (let n = 1; n <= 46; n++) {
     if (monSeats.has(n)) { seatState[n] = 'monitor'; continue; }
-    const tk = dayTickets.find(t => String(t.seat).split(',').map(x => parseInt(x.trim())).includes(n));
-    if (!tk) { seatState[n] = 'free'; continue; }
-    if (tk.boardedAt) { seatState[n] = 'boarded'; boarded++; }
+    // Pode haver MAIS DE UM ticket pra mesma poltrona agora (reserva dividida
+    // entre ida e volta) — considera todos, não só o primeiro encontrado.
+    const tks = dayTickets.filter(t => String(t.seat).split(',').map(x => parseInt(x.trim())).includes(n));
+    if (tks.length === 0) { seatState[n] = 'free'; continue; }
+    const anyBoarded = tks.some(t => t.boardedAt);
+    const dirs = new Set(tks.map(t => t.direction || 'ida_volta'));
+    const fullyTaken = dirs.has('ida_volta') || (dirs.has('ida') && dirs.has('volta'));
+    if (anyBoarded) { seatState[n] = 'boarded'; boarded++; }
+    else if (!fullyTaken && dirs.has('ida')) { seatState[n] = 'partial-ida'; reserved++; }
+    else if (!fullyTaken && dirs.has('volta')) { seatState[n] = 'partial-volta'; reserved++; }
     else { seatState[n] = 'reserved'; reserved++; }
   }
   const capacity = 46 - monSeats.size;
@@ -6019,15 +6037,16 @@ function computeBusOcc(day, busId) {
 }
 
 function rtMosaicGrid(seatState, small) {
-  const cls = st => st === 'boarded' ? 'ms-boarded' : st === 'reserved' ? 'ms-reserved' : st === 'monitor' ? 'ms-monitor' : 'ms-free';
+  const cls = st => st === 'boarded' ? 'ms-boarded' : st === 'reserved' ? 'ms-reserved' : st === 'monitor' ? 'ms-monitor' : st === 'partial-ida' ? 'ms-partial-ida' : st === 'partial-volta' ? 'ms-partial-volta' : 'ms-free';
+  const titleFor = (n, st) => st === 'partial-ida' ? `Poltrona ${n} — só ida ocupada` : st === 'partial-volta' ? `Poltrona ${n} — só volta ocupada` : `Poltrona ${n}`;
   let grid = `<div class="${small ? 'mosaic-sm' : ''}"><div class="mosaic">`;
   for (let row = 0; row < 11; row++) {
     const base = row * 4;
-    [base+1, base+2].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
+    [base+1, base+2].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="${titleFor(n, seatState[n])}">${n}</div>`; });
     grid += '<div class="ms-aisle"></div>';
-    [base+3, base+4].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
+    [base+3, base+4].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="${titleFor(n, seatState[n])}">${n}</div>`; });
   }
-  [45,46].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="Poltrona ${n}">${n}</div>`; });
+  [45,46].forEach(n => { grid += `<div class="mosaic-seat ${cls(seatState[n])}" title="${titleFor(n, seatState[n])}">${n}</div>`; });
   grid += '<div class="ms-aisle"></div><div class="mosaic-seat ms-free" style="grid-column:span 2;width:auto;font-size:8px;">WC</div></div></div>';
   return grid;
 }
@@ -6054,6 +6073,8 @@ function renderRealtimeOcc() {
   const legend = `<div class="mosaic-legend">
     ${isToday ? '<span><i style="background:#1D9E75"></i>Embarcou</span>' : ''}
     <span><i style="background:var(--c4)"></i>Reservada</span>
+    <span><i style="background:#3B82C4"></i>Só ida</span>
+    <span><i style="background:#D4720B"></i>Só volta</span>
     <span><i style="background:#D4A017"></i>Monitor</span>
     <span><i style="background:#cfe5e1"></i>Livre</span>
   </div>`;
