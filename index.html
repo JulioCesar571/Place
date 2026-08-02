@@ -740,6 +740,14 @@ body{-webkit-tap-highlight-color:transparent;}
 .modal-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--c7);margin-bottom:4px;}
 .modal-sub{font-size:13px;color:var(--c5);margin-bottom:24px;}
 .field-group{margin-bottom:18px;}
+@media (max-width:380px){
+  .modal{padding:22px 18px;border-radius:18px;}
+  .field-group{margin-bottom:12px;}
+  .embarque-opt{padding:10px 12px;gap:10px;}
+  .opt-icon{width:30px;height:30px;font-size:15px;border-radius:8px;}
+  .opt-name{font-size:12.5px;}
+  .opt-addr{font-size:10px;}
+}
 .field-label{font-size:12px;font-weight:600;color:var(--c6);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:7px;display:block;}
 .field-readonly{background:var(--c1);border:1.5px solid var(--c2);border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;}
 .field-readonly svg{width:18px;height:18px;color:var(--c4);flex-shrink:0;}
@@ -748,6 +756,13 @@ body{-webkit-tap-highlight-color:transparent;}
 .embarque-options{display:flex;flex-direction:column;gap:10px;}
 .embarque-opt{display:flex;align-items:center;gap:14px;border:2px solid var(--c2);border-radius:14px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s,background 0.15s,transform 0.12s;background:#fff;}
 .embarque-opt.disabled-opt{opacity:0.4;cursor:not-allowed;background:#f2f2f2;}
+/* Sentido da Viagem: grade de 3 colunas, bem mais compacta que a lista vertical
+   usada pro local de embarque (que precisa de espaço pra endereço/horário) */
+#direction-options{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+#direction-options .embarque-opt{flex-direction:column;justify-content:center;text-align:center;gap:4px;padding:12px 6px;font-size:12.5px;font-weight:600;line-height:1.25;}
+@media (max-width:380px){
+  #direction-options .embarque-opt{padding:9px 4px;font-size:11px;}
+}
 .embarque-opt:hover{border-color:var(--c4);background:var(--c1);transform:translateX(3px);}
 .embarque-opt.active{border-color:var(--c4);background:var(--c1);}
 .embarque-opt.active .opt-radio{background:var(--c4);border-color:var(--c4);}
