@@ -804,7 +804,9 @@ body{-webkit-tap-highlight-color:transparent;}
 
 .ticket-bottom{padding:28px;}
 .ticket-qr-area{display:flex;flex-direction:column;align-items:center;gap:16px;}
-.qr-container{background:#fff;border:3px solid var(--c2);border-radius:16px;padding:16px;display:inline-flex;align-items:center;justify-content:center;}
+.qr-container{background:#fff;border:3px solid var(--c2);border-radius:16px;padding:16px;display:inline-flex;align-items:center;justify-content:center;position:relative;}
+#ticket-qrcode.qr-disabled{filter:grayscale(1) opacity(0.3);}
+.qr-cancelled-stamp{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-16deg);background:rgba(192,57,43,0.94);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:0.06em;padding:6px 18px;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,0.25);pointer-events:none;white-space:nowrap;}
 #ticket-qrcode{width:180px;height:180px;}
 #ticket-qrcode img,#ticket-qrcode canvas{border-radius:8px;}
 .ticket-qr-hint{font-size:12px;color:var(--c5);text-align:center;line-height:1.5;max-width:260px;}
@@ -989,6 +991,10 @@ body{-webkit-tap-highlight-color:transparent;}
     <div class="app-panel" id="panel-passagens">
       <div class="passagens-wrap">
         <div id="swap-requests-area"></div>
+        <div class="admin-tabs" id="pass-status-tabs" style="margin-bottom:14px;">
+          <button class="nav-btn active" id="pass-tab-active" onclick="setPassagensFilter('active')">🎫 Reservas Ativas</button>
+          <button class="nav-btn" id="pass-tab-cancelled" onclick="setPassagensFilter('cancelled')">🚫 Canceladas</button>
+        </div>
         <div id="passagens-list"></div>
         <button class="btn-new" style="width:100%;margin-top:8px;padding:13px;" onclick="startSwapMode()">🔄 Solicitar troca de poltrona</button>
       </div>
@@ -1061,6 +1067,7 @@ body{-webkit-tap-highlight-color:transparent;}
         <div class="ticket-qr-area">
           <div class="qr-container">
             <div id="ticket-qrcode"></div>
+            <div class="qr-cancelled-stamp" id="qr-cancelled-stamp" style="display:none;">CANCELADA</div>
           </div>
           <p class="ticket-qr-hint">Apresente este QR Code ao motorista. Ele será escaneado para validar sua entrada no ônibus.</p>
           <div class="ticket-passenger">
@@ -1085,9 +1092,9 @@ body{-webkit-tap-highlight-color:transparent;}
       </div>
     </div>
 
-    <div class="ticket-actions" style="justify-content:center;gap:12px;">
-      <button class="btn-new" style="flex:none;padding:13px 28px;" onclick="showApp(); switchPanel('passagens')">← Minhas Passagens</button>
-      <button id="btn-cancel-ticket" style="flex:none;padding:13px 22px;background:linear-gradient(135deg,#c0392b,#922b21);color:#fff;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:opacity 0.15s;" onclick="openCancelScreen()">Cancelar Passagem</button>
+    <div class="ticket-actions" style="gap:12px;">
+      <button class="btn-new" style="min-width:0;" onclick="showApp(); switchPanel('passagens')">← Minhas Passagens</button>
+      <button id="btn-cancel-ticket" style="flex:1;min-width:0;background:linear-gradient(135deg,#c0392b,#922b21);color:#fff;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;border:none;border-radius:12px;padding:13px;cursor:pointer;transition:opacity 0.15s;" onclick="openCancelScreen()">Cancelar Passagem</button>
     </div>
   </div>
 </div>
@@ -3112,18 +3119,37 @@ function switchPanel(panel) {
   if (panel === 'seats') setTimeout(checkBookingWindow, 50);
 }
 
+let passagensFilterStatus = 'active'; // 'active' | 'cancelled' — qual aba está selecionada em Minhas Passagens
+
+function setPassagensFilter(status) {
+  passagensFilterStatus = status;
+  document.getElementById('pass-tab-active').classList.toggle('active', status === 'active');
+  document.getElementById('pass-tab-cancelled').classList.toggle('active', status === 'cancelled');
+  renderPassagens();
+}
+
 function renderPassagens() {
   renderSwapRequests();
   const el = document.getElementById('passagens-list');
-  if (passagens.length === 0) {
-    el.innerHTML = `<div class="passagens-empty">
-      <div class="passagens-empty-icon">🎫</div>
-      <div class="passagens-empty-title">Nenhuma passagem ainda</div>
-      <div class="passagens-empty-sub">Selecione uma poltrona e confirme sua reserva para ver sua passagem aqui.</div>
-    </div>`;
+  const mostrarCanceladas = passagensFilterStatus === 'cancelled';
+  const filtradas = passagens.filter(t => mostrarCanceladas ? t.cancelled : !t.cancelled);
+  if (filtradas.length === 0) {
+    el.innerHTML = mostrarCanceladas
+      ? `<div class="passagens-empty">
+          <div class="passagens-empty-icon">🚫</div>
+          <div class="passagens-empty-title">Nenhuma passagem cancelada</div>
+          <div class="passagens-empty-sub">Passagens que você cancelar vão aparecer aqui.</div>
+        </div>`
+      : `<div class="passagens-empty">
+          <div class="passagens-empty-icon">🎫</div>
+          <div class="passagens-empty-title">Nenhuma passagem ainda</div>
+          <div class="passagens-empty-sub">Selecione uma poltrona e confirme sua reserva para ver sua passagem aqui.</div>
+        </div>`;
     return;
   }
-  el.innerHTML = passagens.map((t, i) => `
+  el.innerHTML = filtradas.map((t) => {
+    const i = passagens.indexOf(t); // índice real no array completo (usado por openTicket/openCancelFromList)
+    return `
     <div class="passagem-card" onclick="openTicket(${i})">
       <div class="passagem-card-top">
         <div>
@@ -3150,7 +3176,8 @@ function renderPassagens() {
         </div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function openTicket(idx) {
@@ -3173,6 +3200,12 @@ function openTicket(idx) {
     const enc = encodeURIComponent(t.code);
     qrEl.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${enc}" width="180" height="180" style="border-radius:8px" alt="QR Code da passagem">`;
   }
+  // Passagem cancelada: QR fica visualmente "morto" (cinza, opaco, com carimbo)
+  // — reforça pro passageiro que esse código não vale mais nada, mesmo que ele
+  // ainda saiba mostrar a tela. A recusa de verdade já acontece no banco/scanner
+  // do monitor; isso aqui é só o reforço visual.
+  qrEl.classList.toggle('qr-disabled', !!t.cancelled);
+  document.getElementById('qr-cancelled-stamp').style.display = t.cancelled ? 'block' : 'none';
   showScreen('ticket');
 }
 
@@ -3260,8 +3293,8 @@ async function doLogin() {
 async function loginSuccess(user) {
   currentUser = user;
   dbLoadHistory(user.cpf);
-  if (user.role === 'admin') { dbRefresh(); showAdminScreen(); askNotifPermission(); return; }
-  if (user.role === 'monitor') { dbRefresh(); showMonitorScreen(); askNotifPermission(); return; }
+  if (user.role === 'admin') { dbRefresh().then(ok => { if (ok) { try { persistUsers(); } catch(e) {} } }); showAdminScreen(); askNotifPermission(); return; }
+  if (user.role === 'monitor') { dbRefresh().then(ok => { if (ok) { persistOwnUser(user); } }); showMonitorScreen(); askNotifPermission(); return; }
   if (user.role === 'passenger' && getPriority(user) === 'blocked') { showScreen('blocked'); return; }
 
   document.getElementById('app-avatar').textContent = user.initials;
@@ -3273,11 +3306,19 @@ async function loginSuccess(user) {
   // Contexto de seleção sempre limpo no início da sessão
   selectedTravelDays.length = 0;
   selected.clear();
+  passagensFilterStatus = 'active';
 
   // Sincroniza antes de decidir a tela inicial (passagens vêm do banco)
   const syncOk = await dbRefresh();
   // A sincronização pode ter começado antes do login — reconstrói do cache
   rebuildUserPassagens();
+
+  // Sincronizou de verdade agora? Salva um retrato local SÓ DO PRÓPRIO usuário
+  // neste aparelho (não a base inteira — isso exporia a senha de todo mundo no
+  // celular de um passageiro comum). Sem isso, só admins geravam esse cache —
+  // um passageiro comum nunca tinha USERS[cpf] disponível num login futuro sem
+  // internet, mesmo com o verificador de senha offline já salvo corretamente.
+  if (syncOk) { persistOwnUser(user); }
 
   // Essa tentativa de sincronizar falhou (offline ou banco fora do ar) e nada
   // sincronizou agora? Usa a última cópia salva localmente na sincronização boa
@@ -5011,6 +5052,27 @@ function loadCustomUsers() {
   } catch(e) {}
 }
 
+// ── Cache individual (só o PRÓPRIO usuário) — usado no login comum ─────────
+// Diferente de persistUsers() (que guarda a base INTEIRA — nome, cpf e senha
+// de todo mundo — e só deveria rodar em aparelho de admin), este cache guarda
+// só o registro da pessoa que está logando NESTE aparelho. Evita que o
+// celular de um passageiro comum acumule os dados (inclusive senha) de todos
+// os outros passageiros só por ele ter feito login online normalmente.
+function persistOwnUser(u) {
+  try { localStorage.setItem('place_own_user_' + u.cpf, JSON.stringify(u)); } catch(e) {}
+}
+function loadOwnUsers() {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('place_own_user_')) {
+        const u = JSON.parse(localStorage.getItem(key) || 'null');
+        if (u && u.cpf) USERS[u.cpf] = u;
+      }
+    }
+  } catch(e) {}
+}
+
 function persistUsers() {
   try {
     // Persistência total: grava todos os usuários (passageiros e monitores),
@@ -5021,6 +5083,7 @@ function persistUsers() {
 }
 
 loadCustomUsers();
+loadOwnUsers();
 rebuildMonitorSeats();
 
 function onCuRoleChange() {
