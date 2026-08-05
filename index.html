@@ -1139,6 +1139,67 @@ body{-webkit-tap-highlight-color:transparent;}
   </div>
 </div>
 
+<!-- ===== MODAL: NOVA RESERVA MANUAL (ADMIN) ===== -->
+<div class="modal-overlay" id="admres-modal-overlay" onclick="if(event.target===this) closeAdminNewReservation()">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" onclick="closeAdminNewReservation()">×</button>
+    <div class="modal-title">Nova Reserva Manual</div>
+    <div class="modal-sub">Cria uma reserva em nome de qualquer passageiro cadastrado</div>
+
+    <div class="field-group">
+      <label class="field-label">Passageiro</label>
+      <input type="text" id="admres-search" class="admin-search" style="width:100%;box-sizing:border-box;" placeholder="🔍 Buscar por nome ou CPF..." oninput="adminSearchPassengerList()" autocomplete="off">
+      <div id="admres-search-results" style="max-height:160px;overflow-y:auto;margin-top:6px;"></div>
+      <div id="admres-selected-passenger" style="display:none;margin-top:8px;padding:10px 14px;background:var(--c1);border-radius:10px;font-size:13px;font-weight:600;color:var(--c7);"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Linha</label>
+      <select id="admres-bus" class="filter-select" style="width:100%;box-sizing:border-box;">
+        <option value="7515">7515 Valter</option>
+        <option value="8313">8313 Romualdo</option>
+        <option value="6515">6515 Uniplac</option>
+        <option value="2092">2092 Misto</option>
+        <option value="2074">2074 Elias</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Dia da viagem</label>
+      <input type="date" id="admres-date" class="admin-date-input" style="width:100%;box-sizing:border-box;">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Poltrona</label>
+      <input type="number" id="admres-seat" min="1" max="46" placeholder="Número da poltrona (1-46)" style="width:100%;box-sizing:border-box;padding:12px 14px;border:2px solid var(--c2);border-radius:12px;font-size:14px;font-family:inherit;">
+      <div id="admres-seat-hint" style="font-size:12px;color:var(--c5);margin-top:4px;"></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Local de Embarque</label>
+      <select id="admres-local" class="filter-select" style="width:100%;box-sizing:border-box;">
+        <option value="Pampa Hotel">Pampa Hotel</option>
+        <option value="Igreja de Fátima">Igreja de Fátima</option>
+        <option value="CTG Porteira do Rio Grande">CTG Porteira do Rio Grande</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Sentido</label>
+      <select id="admres-direction" class="filter-select" style="width:100%;box-sizing:border-box;">
+        <option value="ida_volta">Ida e volta</option>
+        <option value="ida">Somente ida</option>
+        <option value="volta">Somente volta</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAdminNewReservation()">Cancelar</button>
+      <button class="btn-ok" id="admres-confirm-btn" onclick="confirmAdminNewReservation()">Criar Reserva</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== BUS SELECT SCREEN ===== -->
 <div id="screen-busselect" class="screen">
   <div class="busselect-card">
@@ -1526,6 +1587,10 @@ body{-webkit-tap-highlight-color:transparent;}
         </div>
 
         <div class="export-btns">
+          <button class="export-btn btn-xlsx" style="background:linear-gradient(135deg,#1D9E75,#146b52);" onclick="openAdminNewReservation()">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Nova Reserva Manual
+          </button>
           <button class="export-btn btn-xlsx" onclick="exportXLSX()">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-3.5 5l1.5 2.5L9.5 17H8l2-3.2L8.1 11H9.5l1 1.8 1-1.8H13l-1.9 2.8 2 3.2H11.5l-1.5-2.5z"/></svg>
             Exportar Excel
@@ -1557,6 +1622,7 @@ body{-webkit-tap-highlight-color:transparent;}
                 <th>Embarque Confirmado</th>
                 <th>Status</th>
                 <th>Código</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody id="adm-tbody"></tbody>
@@ -6631,6 +6697,7 @@ function renderAdminTable() {
       ${boardedCell.replace('</td>','<small>Embarque</small></td>')}
       <td>${statusHtml}</td>
       <td style="font-family:monospace;font-size:11px;color:var(--c5);">${t.code}</td>
+      <td>${!t.cancelled ? `<button onclick="openAdminCancelTicket('${t.code}')" style="background:none;border:1.5px solid #e24b4a;color:#c0392b;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;padding:5px 10px;border-radius:8px;cursor:pointer;white-space:nowrap;">Cancelar</button>` : '—'}</td>
     </tr>`;
   }).join('');
   syncAdminTableScrollbars();
@@ -6671,6 +6738,118 @@ function isBoardingPast(t) {
   // Absent only 1 hour after boarding time
   absentTime.setHours(bt.h + 1, bt.m, 0, 0);
   return now > absentTime;
+}
+
+// ═══ NOVA RESERVA MANUAL (ADMIN) ═══════════════════════════════════════════
+let admResSelectedCpf = null;
+
+function openAdminNewReservation() {
+  admResSelectedCpf = null;
+  document.getElementById('admres-search').value = '';
+  document.getElementById('admres-search-results').innerHTML = '';
+  document.getElementById('admres-selected-passenger').style.display = 'none';
+  document.getElementById('admres-bus').value = '7515';
+  document.getElementById('admres-date').value = '';
+  document.getElementById('admres-seat').value = '';
+  document.getElementById('admres-seat-hint').textContent = '';
+  document.getElementById('admres-local').value = 'Pampa Hotel';
+  document.getElementById('admres-direction').value = 'ida_volta';
+  document.getElementById('admres-modal-overlay').classList.add('open');
+}
+function closeAdminNewReservation() {
+  document.getElementById('admres-modal-overlay').classList.remove('open');
+}
+
+function adminSearchPassengerList() {
+  const q = document.getElementById('admres-search').value.toLowerCase().trim();
+  const resultsEl = document.getElementById('admres-search-results');
+  if (!q) { resultsEl.innerHTML = ''; return; }
+  const matches = Object.values(USERS)
+    .filter(u => u.name.toLowerCase().includes(q) || u.cpf.includes(q))
+    .slice(0, 8);
+  if (matches.length === 0) { resultsEl.innerHTML = '<div style="font-size:12px;color:var(--c5);padding:6px 2px;">Nenhum usuário encontrado.</div>'; return; }
+  resultsEl.innerHTML = matches.map(u => `
+    <div onclick="adminSelectPassengerForReservation('${u.cpf}')" style="padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px;" onmouseover="this.style.background='var(--c1)'" onmouseout="this.style.background='transparent'">
+      <span style="font-weight:600;color:var(--c7);">${escapeHtml(u.name)}</span>
+      <span style="color:var(--c5);font-family:monospace;font-size:11px;">${u.cpf}</span>
+    </div>`).join('');
+}
+
+function adminSelectPassengerForReservation(cpf) {
+  const u = USERS[cpf];
+  if (!u) return;
+  admResSelectedCpf = cpf;
+  document.getElementById('admres-search').value = '';
+  document.getElementById('admres-search-results').innerHTML = '';
+  const sel = document.getElementById('admres-selected-passenger');
+  sel.style.display = 'block';
+  sel.textContent = `✓ ${u.name} (${u.cpf})`;
+}
+
+async function confirmAdminNewReservation() {
+  const u = admResSelectedCpf ? USERS[admResSelectedCpf] : null;
+  if (!u) { showToast('Selecione um passageiro primeiro.'); return; }
+  const busId = document.getElementById('admres-bus').value;
+  const busName = { '7515':'7515 Valter', '8313':'8313 Romualdo', '6515':'6515 Uniplac', '2092':'2092 Misto', '2074':'2074 Elias' }[busId];
+  const dateVal = document.getElementById('admres-date').value; // yyyy-mm-dd
+  if (!dateVal) { showToast('Escolha o dia da viagem.'); return; }
+  const [y, m, d] = dateVal.split('-');
+  const travelDate = `${d}/${m}/${y}`;
+  const seatNum = parseInt(document.getElementById('admres-seat').value, 10);
+  if (!seatNum || seatNum < 1 || seatNum > 46) { showToast('Informe uma poltrona válida (1 a 46).'); return; }
+  const local = document.getElementById('admres-local').value;
+  const direction = document.getElementById('admres-direction').value;
+
+  // Revalida disponibilidade dessa poltrona/dia/sentido antes de tentar —
+  // o banco também protege isso (trigger), mas checar antes evita uma viagem
+  // desnecessária ao servidor e dá um aviso mais claro pro admin.
+  const occNow = getOccupiedForDays([travelDate], busId);
+  const info = occNow.get(seatNum);
+  if (info) {
+    const conflita = info.directions.has('ida_volta') || info.directions.has(direction) || direction === 'ida_volta';
+    if (conflita) { showToast(`⚠️ Poltrona ${seatNum} já ocupada nesse dia/sentido nessa linha.`); return; }
+  }
+
+  const btn = document.getElementById('admres-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Criando...';
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const code = 'PDS-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-' + seatNum;
+  const t = {
+    passenger: u.name, cpf: u.cpf, seat: String(seatNum), local, direction,
+    code, date: dateStr, reservedAt: dateStr, travelDate, boardedAt: null,
+    busId, busName, bus: 'Place', valid: true
+  };
+  try {
+    await dbInsertTicketStrict(t);
+    allPassagens.push({...t});
+    showToast(`✅ Reserva criada para ${u.name} — poltrona ${seatNum}, ${travelDate}.`);
+    closeAdminNewReservation();
+    renderAdminTable();
+  } catch(err) {
+    if (String(err.message).includes('SEAT_TAKEN')) {
+      showToast(`⚠️ Poltrona ${seatNum} acabou de ser ocupada para esse dia/sentido. Escolha outra.`);
+    } else {
+      dbErr(err);
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = 'Criar Reserva';
+  }
+}
+
+// Cancela uma passagem a partir do painel do admin — o banco já permite isso
+// pra qualquer CPF quando quem faz a chamada tem papel de admin (RLS).
+async function openAdminCancelTicket(code) {
+  const t = allPassagens.find(x => x.code === code);
+  if (!t) return;
+  const diaViagem = t.travelDate || (t.date ? t.date.slice(0,10) : '—');
+  const motivo = prompt(`Cancelar a passagem de ${t.passenger} — poltrona ${t.seat}, dia ${diaViagem}?\n\nMotivo do cancelamento:`, 'Cancelado pelo administrador');
+  if (motivo === null) return; // admin desistiu do prompt
+  t.cancelled = true;
+  t.cancelReason = motivo || 'Cancelado pelo administrador';
+  await dbPatchTicket(code, { cancelled: true, cancel_reason: t.cancelReason });
+  showToast(`Passagem de ${t.passenger} cancelada.`);
+  renderAdminTable();
 }
 
 function clearAdminFilters() {
