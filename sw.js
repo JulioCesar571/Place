@@ -3,7 +3,7 @@
 // Estratégia: rede primeiro para o app (atualizações chegam sempre),
 // cache como reserva para abrir offline; APIs nunca são cacheadas.
 // ═══════════════════════════════════════════════════════════════
-const CACHE = 'place-v46';
+const CACHE = 'place-v47';
 const APP_SHELL = [
   './',
   './index.html',
