@@ -2251,11 +2251,32 @@ function dbRefresh() {
   dbRefreshPromise = _dbRefreshRun().finally(() => { dbRefreshPromise = null; });
   return dbRefreshPromise;
 }
+// Busca TODAS as linhas de um caminho, paginando em lotes — o Supabase corta
+// qualquer resposta em 1000 linhas por padrão (configuração do projeto, não
+// do pedido em si), então um único sb() com limite alto pode ser cortado
+// silenciosamente sem gerar erro. Isso contorna esse teto buscando em lotes
+// de 1000 até a página vir vazia/incompleta, garantindo os dados completos
+// não importa o tamanho da tabela.
+async function fetchAllRows(basePath) {
+  const pageSize = 1000;
+  let all = [];
+  let offset = 0;
+  const sep = basePath.includes('?') ? '&' : '?';
+  while (true) {
+    const batch = await sb(`${basePath}${sep}limit=${pageSize}&offset=${offset}`);
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    all = all.concat(batch);
+    if (batch.length < pageSize) break; // veio menos que o lote — última página
+    offset += pageSize;
+  }
+  return all;
+}
+
 async function _dbRefreshRun() {
   try {
     const [usersRows, ticketRows, waitRows, swapRows, presRows, busRows, pointRows, annRows] = await Promise.all([
-      sb('/users?select=*'),
-      sb('/tickets?select=*&order=created_at.desc&limit=2000'),
+      fetchAllRows('/users?select=*'),
+      fetchAllRows('/tickets?select=*&order=created_at.desc'),
       sb('/waitlist?select=*&order=joined_at.asc'),
       sb("/swaps?select=*&status=eq.pending"),
       sb('/monitor_presence?select=*'),
