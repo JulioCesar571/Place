@@ -2624,7 +2624,7 @@ async function verifyLicense() {
 }
 
 // Re-verify periodically while the app is open (picks up remote suspension in minutes)
-setInterval(() => { if (LICENSE_URL && !document.hidden) verifyLicense(); }, 5 * 60000);
+setInterval(() => { if (LICENSE_URL && !document.hidden) verifyLicense(); }, 20 * 60000);
 
 // Watchdog: se após 12s a verificação não concluiu (visualizadores de documentos
 // como o preview do WhatsApp/iOS bloqueiam requisições), orienta o usuário
@@ -3795,6 +3795,11 @@ async function confirmSeats() {
     } catch(err) {
       if (String(err.message).includes('SEAT_TAKEN')) {
         showToast(`⚠️ Poltrona ${nums.join(', ')} acabou de ser ocupada para ${day.slice(0,5)}. Escolha outra.`);
+        buildCabin(); updateUI();
+        return;
+      }
+      if (String(err.message).includes('DUPLICATE_CPF_SAME_DAY')) {
+        showToast(`⚠️ Você já tem uma passagem para ${day.slice(0,5)} nesse ônibus. Cancele-a antes de reservar outra poltrona.`);
         buildCabin(); updateUI();
         return;
       }
@@ -7115,6 +7120,11 @@ async function confirmAdminNewReservation() {
     if (conflita) { showToast(`⚠️ Poltrona ${seatNum} já ocupada nesse dia/sentido nessa linha.`); return; }
   }
 
+  // Esse mesmo CPF já tem alguma poltrona ATIVA nesse ônibus+dia (outra
+  // poltrona, mesmo sentido ou não)? Cada CPF só pode ter uma por dia.
+  const jaTemNesseDia = allPassagens.some(p => !p.cancelled && p.cpf === u.cpf && p.busId === busId && (p.travelDate || (p.date ? p.date.slice(0,10) : null)) === travelDate);
+  if (jaTemNesseDia) { showToast(`⚠️ ${u.name} já tem uma passagem para ${travelDate} nessa linha. Cancele a existente antes de criar outra.`); return; }
+
   const btn = document.getElementById('admres-confirm-btn');
   btn.disabled = true; btn.textContent = 'Criando...';
   const now = new Date();
@@ -7134,6 +7144,8 @@ async function confirmAdminNewReservation() {
   } catch(err) {
     if (String(err.message).includes('SEAT_TAKEN')) {
       showToast(`⚠️ Poltrona ${seatNum} acabou de ser ocupada para esse dia/sentido. Escolha outra.`);
+    } else if (String(err.message).includes('DUPLICATE_CPF_SAME_DAY')) {
+      showToast(`⚠️ ${u.name} já tem uma passagem para esse dia/ônibus. Cancele a existente antes de criar outra.`);
     } else {
       dbErr(err);
     }
