@@ -202,6 +202,14 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 .user-mgmt-table tbody tr:last-child{border-bottom:none;}
 .user-mgmt-table tbody tr:hover{background:rgba(232,245,243,0.5);}
 .user-mgmt-table td{padding:10px 14px;color:var(--c7);vertical-align:middle;}
+
+/* ── Gestão de usuários: tamanho FIXO (sem reajuste conforme filtro/conteúdo) ── */
+.users-fixed-wrap{height:460px;overflow:auto;border-radius:14px;border:1px solid var(--c2);}
+.users-fixed-wrap .user-mgmt-table{table-layout:fixed;width:100%;min-width:900px;}
+.users-fixed-wrap .user-mgmt-table thead th{position:sticky;top:0;z-index:2;background:var(--c7);}
+.users-fixed-wrap .user-mgmt-table td{overflow-wrap:anywhere;}
+.users-fixed-wrap .priority-badge{white-space:normal;text-align:left;}
+.users-fixed-wrap .priority-select{max-width:100%;}
 .priority-select{padding:6px 10px;border:1.5px solid var(--c2);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;color:var(--c7);background:#fff;cursor:pointer;outline:none;transition:border-color 0.15s;}
 .priority-select:focus{border-color:var(--c4);}
 .priority-select.sel-p1{border-color:#FFA500;background:#FFFDE7;color:#5a3800;}
@@ -700,6 +708,26 @@ body{-webkit-tap-highlight-color:transparent;}
 .empty-cell{width:46px;height:40px;flex-shrink:0;}
 .divider-row{height:1px;background:linear-gradient(to right,transparent,var(--c3),transparent);margin:6px 8px;}
 
+/* ── Aba "Poltronas de hoje" (Minhas Passagens) ── */
+.today-head{font-size:13px;font-weight:600;color:var(--c7);margin:2px 2px 10px;}
+.today-bus-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.today-chip{border:1.5px solid var(--c4);background:rgba(255,255,255,0.6);color:var(--c7);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;line-height:1.3;font-family:inherit;}
+.today-chip small{display:block;font-size:11px;font-weight:500;color:var(--c6);}
+.today-chip.on{background:var(--c6);border-color:var(--c7);color:#fff;}
+.today-chip.on small{color:var(--c2);}
+.today-mets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.today-met{background:rgba(255,255,255,0.65);border-radius:12px;padding:8px 10px;}
+.today-met span{display:block;font-size:11px;color:var(--c6);font-weight:600;}
+.today-met b{font-size:20px;color:var(--c7);}
+.today-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--c6);margin-bottom:12px;}
+.today-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1.5px solid;vertical-align:-2px;margin-right:4px;}
+.today-note{border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:12px;background:rgba(255,255,255,0.65);color:var(--c7);}
+.today-note.warn{background:#FFF4D6;color:#7A5800;}
+.today-map{background:rgba(255,255,255,0.55);border-radius:16px;padding:14px 8px;display:flex;justify-content:center;}
+.today-map.readonly .seat{pointer-events:none;}
+.seat.mine{background:var(--c6);border-color:var(--c7);color:#fff;cursor:default;}
+.seat.mine:hover{transform:none;background:var(--c6);border-color:var(--c7);box-shadow:none;}
+
 .sidebar{display:flex;flex-direction:column;gap:16px;}
 .side-card{background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.7);border-radius:20px;padding:22px;box-shadow:0 4px 24px rgba(23,79,73,0.10);}
 .side-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--c7);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px;}
@@ -996,9 +1024,11 @@ body{-webkit-tap-highlight-color:transparent;}
         <div class="admin-tabs" id="pass-status-tabs" style="margin-bottom:14px;">
           <button class="nav-btn active" id="pass-tab-active" onclick="setPassagensFilter('active')">🎫 Reservas Ativas</button>
           <button class="nav-btn" id="pass-tab-cancelled" onclick="setPassagensFilter('cancelled')">🚫 Canceladas</button>
+          <button class="nav-btn" id="pass-tab-today" onclick="setPassagensFilter('today')">🪑 Poltronas de hoje</button>
         </div>
         <div id="passagens-list"></div>
-        <button class="btn-new" style="width:100%;margin-top:8px;padding:13px;" onclick="startSwapMode()">🔄 Solicitar troca de poltrona</button>
+        <div id="today-seats-wrap" style="display:none;"></div>
+        <button class="btn-new" id="btn-swap-mode" style="width:100%;margin-top:8px;padding:13px;" onclick="startSwapMode()">🔄 Solicitar troca de poltrona</button>
       </div>
     </div><!-- /panel-passagens -->
 
@@ -1416,7 +1446,7 @@ body{-webkit-tap-highlight-color:transparent;}
     <div class="cancel-header">
       <div class="cancel-icon">🚫</div>
       <div class="cancel-title">Cancelar Passagem</div>
-      <div class="cancel-sub">Informe o motivo do cancelamento.<br>Cancelamentos são aceitos até 4h antes do embarque, de segunda a quinta.</div>
+      <div class="cancel-sub">Informe o motivo do cancelamento.<br>Cancelamentos são aceitos até as 17h00 do dia da viagem, de segunda a quinta.</div>
     </div>
 
     <div class="cancel-ticket-info">
@@ -1841,7 +1871,7 @@ body{-webkit-tap-highlight-color:transparent;}
           <table class="user-mgmt-table"><thead><tr><th>Ponto</th><th>Endereço</th><th>Horário</th><th>Status</th><th>Ações</th></tr></thead>
           <tbody id="points-tbody"></tbody></table>
         </div>
-        <div class="bulk-hint" style="margin-top:12px;">O horário do ponto define o prazo de cancelamento (4h antes) e a marcação automática de ausência (1h depois).</div>
+        <div class="bulk-hint" style="margin-top:12px;">O horário do ponto define a marcação automática de ausência (1h depois). O prazo de cancelamento dos passageiros é fixo: até 17h00 do dia da viagem, para todos os pontos.</div>
       </div>
     </div>
 
@@ -1989,8 +2019,9 @@ body{-webkit-tap-highlight-color:transparent;}
             Exportar Excel
           </button>
         </div>
-        <div style="overflow-x:auto;border-radius:14px;border:1px solid var(--c2);">
+        <div class="users-fixed-wrap" id="users-fixed-wrap">
           <table class="user-mgmt-table">
+            <colgroup><col style="width:24%"><col style="width:14%"><col style="width:25%"><col style="width:19%"><col style="width:18%"></colgroup>
             <thead>
               <tr>
                 <th>Passageiro</th>
@@ -2499,7 +2530,11 @@ async function dbLoadHistory(cpf) {
 
 // Polling: mantém todos os dispositivos sincronizados.
 // Pausa quando a aba está em segundo plano (bateria/CPU) e sincroniza ao retornar.
-setInterval(() => { if (currentUser && !document.hidden) dbRefresh(); }, 20000);
+// Intervalo ajustado de 20s -> 45s: reduz quase pela metade a carga recorrente no
+// banco (8 queries em paralelo por aba aberta a cada ciclo), sem impacto perceptível
+// na experiência — a maioria das mudanças (reserva, cancelamento) não precisa aparecer
+// para os outros usuários em menos de 1 minuto.
+setInterval(() => { if (currentUser && !document.hidden) dbRefresh(); }, 45000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && currentUser) dbRefresh();
 });
@@ -2724,7 +2759,8 @@ async function checkOfflineAuthVerifier(cpf, pass) {
 const USERS = {
   '012.345.678-99': { name:'Marcos Rodrigues', pass:'123456', initials:'MR', cpf:'012.345.678-99', role:'passenger', priority:'p1' },
   '987.654.321-00': { name:'Ana Paula Souza', pass:'654321', initials:'AP', cpf:'987.654.321-00', role:'passenger', priority:'p2' },
-  '000.000.000-00': { name:'Administrador Geral', pass:'admin2024', initials:'AG', cpf:'000.000.000-00', role:'admin' },
+  // Senha do admin guardada como HASH (mesmo formato de hashPass), para não ficar legível no código-fonte.
+  '000.000.000-00': { name:'Administrador Geral', pass:'sha256:7556eead1c67f0bd0c9b2f6e62d496b25298a1a1a7bfc125cea13e9b1fa5add3', initials:'AG', cpf:'000.000.000-00', role:'admin' },
   '111.111.111-11': { name:'João Monitor', pass:'monitor1', initials:'JM', cpf:'111.111.111-11', role:'monitor', seat:1, busId:'7515' },
   '222.222.222-22': { name:'Carla Monitora', pass:'monitor2', initials:'CM', cpf:'222.222.222-22', role:'monitor', seat:2, busId:'7515' }
 };
@@ -2952,7 +2988,7 @@ function getBookingWindowStatusForUser(user) {
 // Open: 18h today → 12h next day (Mon–Thu only for next-day trips)
 // Rule: seats for DAY X can be booked from 18h on DAY X-1 until 12h on DAY X
 // Day X must be Tue–Fri (so day X-1 = Mon–Thu for opening at 18h)
-// Cancellation cutoff = earliest boarding - 4h = 12h40 (Pampa Hotel)
+// Cancellation cutoff = 17h00 no dia da viagem (fixo, todos os pontos)
 
 function getBookingWindowStatus() {
   const now = new Date();
@@ -3068,7 +3104,7 @@ function checkBookingWindow() {
         <strong>Horário de reservas:</strong><br>
         🟢 <strong>Abertura:</strong> Segunda a quinta, a partir das <strong>18h30</strong><br>
         🔴 <strong>Encerramento:</strong> Dia seguinte às <strong>12h00</strong><br>
-        ✏️ Cancelamentos: até <strong>4h antes</strong> do embarque
+        ✏️ Cancelamentos: até <strong>17h00</strong> do dia da viagem
       </div>
     </div>
   `;
@@ -3089,6 +3125,13 @@ function getBoardingTime(local) {
 }
 const BOARDING_TIMES = new Proxy({}, { get: (_, local) => getBoardingTime(String(local)) });
 const CANCEL_DAYS = [1,2,3,4]; // Mon=1 ... Thu=4
+// Prazo do PASSAGEIRO no dia da viagem, igual para todos os pontos de embarque:
+// vale tanto para CANCELAR quanto para RESERVAR na aba "Poltronas de hoje" (mesmo
+// horário de propósito). Antes o cancelamento era "4h antes do embarque de cada
+// ponto" (12h40 a 12h55). O admin não é limitado por este horário.
+const CANCEL_CUTOFF_HOUR = 17;
+const CANCEL_CUTOFF_MIN  = 0;
+const CANCEL_CUTOFF_LABEL = String(CANCEL_CUTOFF_HOUR).padStart(2,'0') + 'h' + String(CANCEL_CUTOFF_MIN).padStart(2,'0');
 let cancelTicketIdx = null;
 let cancelReason = null;
 
@@ -3099,21 +3142,16 @@ function cleanLocal(local) {
 
 function getDeadlineInfo(ticket) {
   const now = new Date();
-  const bt = getBoardingTime(ticket.local);
-  // Prazo: até 4h antes do embarque NO DIA DA VIAGEM
+  // Prazo: até CANCEL_CUTOFF (17h00) NO DIA DA VIAGEM
   const travelDay = ticket.travelDate ? parseTicketDate(ticket.travelDate) : new Date(now);
-  const deadlineHour = bt.h - 4;
-  const deadlineMin  = bt.m;
   const deadline = new Date(travelDay);
-  deadline.setHours(deadlineHour < 0 ? 0 : deadlineHour, deadlineMin, 0, 0);
+  deadline.setHours(CANCEL_CUTOFF_HOUR, CANCEL_CUTOFF_MIN, 0, 0);
   if (now > deadline) {
-    const bStr = `${String(bt.h).padStart(2,'0')}h${String(bt.m).padStart(2,'0')}`;
-    const dStr = `${String(deadlineHour < 0 ? 0 : deadlineHour).padStart(2,'0')}h${String(deadlineMin).padStart(2,'0')}`;
-    return { ok:false, msg:`Prazo encerrado. Cancelamentos devem ser feitos até ${dStr} (4h antes do embarque das ${bStr}).`, level:'blocked' };
+    return { ok:false, msg:`Prazo encerrado. Cancelamentos devem ser feitos até ${CANCEL_CUTOFF_LABEL} do dia da viagem.`, level:'blocked' };
   }
   const diff = Math.round((deadline - now) / 60000);
   const hLeft = Math.floor(diff/60), mLeft = diff%60;
-  return { ok:true, msg:`Você pode cancelar. Prazo: ${String(deadlineHour<0?0:deadlineHour).padStart(2,'0')}h${String(deadlineMin).padStart(2,'0')} — faltam ${hLeft}h${String(mLeft).padStart(2,'0')}min.`, level:'ok' };
+  return { ok:true, msg:`Você pode cancelar. Prazo: ${CANCEL_CUTOFF_LABEL} — faltam ${hLeft}h${String(mLeft).padStart(2,'0')}min.`, level:'ok' };
 }
 
 function openCancelScreen() {
@@ -3281,17 +3319,246 @@ function switchPanel(panel) {
   if (panel === 'seats') setTimeout(checkBookingWindow, 50);
 }
 
-let passagensFilterStatus = 'active'; // 'active' | 'cancelled' — qual aba está selecionada em Minhas Passagens
+let passagensFilterStatus = 'active'; // 'active' | 'cancelled' | 'today' — qual aba está selecionada em Minhas Passagens
 
 function setPassagensFilter(status) {
   passagensFilterStatus = status;
-  document.getElementById('pass-tab-active').classList.toggle('active', status === 'active');
-  document.getElementById('pass-tab-cancelled').classList.toggle('active', status === 'cancelled');
+  ['active','cancelled','today'].forEach(st => {
+    const b = document.getElementById('pass-tab-' + st);
+    if (b) b.classList.toggle('active', status === st);
+  });
   renderPassagens();
+}
+
+// ═══════ POLTRONAS DE HOJE (escolha da poltrona no próprio dia) ═══════
+// Aba dentro de "Minhas Passagens": o passageiro escolhe a linha, vê só as
+// poltronas do DIA ATUAL e reserva a que estiver livre. Nomes de outros
+// passageiros nunca aparecem aqui — só "ocupada".
+let todayBusId = null;      // linha em exibição na aba
+let _todayPick = false;     // true enquanto o modal de embarque pertence a essa aba
+let _todayPickBus = null;   // linha da poltrona que está sendo reservada
+
+// Horário da linha, como cadastrado na descrição ("saída às 07h15") — só exibição
+function busDepartureLabel(bus) {
+  const m = /(\d{1,2})h(\d{2})/.exec((bus && bus.desc) || '');
+  return m ? `${m[1].padStart(2, '0')}h${m[2]}` : '';
+}
+// Reserva do dia encerra no mesmo horário do cancelamento (CANCEL_CUTOFF, 17h00),
+// comparado do mesmo jeito que getDeadlineInfo: passou do horário → fechado.
+function isTodayBookingClosed() {
+  const now = new Date();
+  const cutoff = new Date(now);
+  cutoff.setHours(CANCEL_CUTOFF_HOUR, CANCEL_CUTOFF_MIN, 0, 0);
+  return now > cutoff;
+}
+// Poltronas de monitor de uma linha — versão sem efeitos colaterais (não mexe em MONITOR_SEATS)
+function monitorSeatsForBus(busId) {
+  const set = new Set();
+  Object.values(USERS).forEach(u => {
+    if (u.role !== 'monitor' || !u.seat) return;
+    if (u.busId && u.busId !== busId) return;
+    if (monitorSeatActive[monKey(u.busId, u.seat)] === false) return;
+    set.add(u.seat);
+  });
+  return set;
+}
+function myTicketToday() {
+  const today = getTodayStr();
+  return passagens.find(p => !p.cancelled && p.travelDate === today) || null;
+}
+
+function setTodayBus(busId) {
+  todayBusId = busId;
+  renderTodaySeats();
+}
+
+function renderTodaySeats() {
+  const wrap = document.getElementById('today-seats-wrap');
+  if (!wrap || !currentUser) return;
+  const today = getTodayStr();
+  const mine = myTicketToday();
+  if (!todayBusId || !BUSES.some(b => b.id === todayBusId)) {
+    todayBusId = (mine && mine.busId) || (selectedBus && selectedBus.id) || BUSES[0].id;
+  }
+  const bus = BUSES.find(b => b.id === todayBusId);
+  const departed = isTodayBookingClosed();
+  const blocked = getPriority(currentUser) === 'blocked';
+  const canPick = !mine && !departed && !blocked;
+  const monSeats = monitorSeatsForBus(bus.id);
+  const occ = getOccupiedForDays([today], bus.id); // poltrona -> { directions }
+  const mySeats = new Set();
+  if (mine && mine.busId === bus.id) {
+    String(mine.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(n => mySeats.add(n));
+  }
+
+  let nFree = 0, nPart = 0, nOcc = 0;
+  function seat(num) {
+    if (monSeats.has(num)) {
+      return `<div class="seat monitor" title="Monitor"><span style="font-size:14px">⭐</span><span class="seat-name">Monitor</span></div>`;
+    }
+    if (mySeats.has(num)) {
+      nOcc++;
+      return `<div class="seat mine" title="Sua poltrona">${seatSVG}<span class="seat-num">${num}</span></div>`;
+    }
+    const info = occ.get(num);
+    const dirs = info ? info.directions : null;
+    if (dirs && isSeatFullyTaken(dirs)) {
+      nOcc++;
+      return `<div class="seat occupied" title="Ocupada">${seatSVG}<span class="seat-num">${num}</span></div>`;
+    }
+    let cls = '', title = 'Livre';
+    if (dirs && dirs.has('ida')) { cls = ' partial-ida'; title = 'Ida já reservada — livre só para volta'; nPart++; }
+    else if (dirs && dirs.has('volta')) { cls = ' partial-volta'; title = 'Volta já reservada — livre só para ida'; nPart++; }
+    else nFree++;
+    return `<div class="seat${cls}" title="${title}" onclick="pickTodaySeat(${num})">${seatSVG}<span class="seat-num">${num}</span></div>`;
+  }
+  const aisle = '<div class="aisle"><div class="aisle-inner"></div></div>';
+  const empty = '<div class="empty-cell"></div>';
+  const divider = '<div class="divider-row"></div>';
+  const rowNum = n => `<div class="row-num">${n}</div>`;
+
+  let n = 1, rows = '';
+  rows += `<div class="row" style="margin-bottom:6px;"><div style="width:18px"></div><div class="special-box driver-box">${driverSVG}<span>Motor.</span></div>${aisle}${empty}${empty}</div>${divider}`;
+  for (let r = 1; r <= 11; r++) {
+    rows += `<div class="row">${rowNum(r)}${seat(n++)}${seat(n++)}${aisle}${seat(n++)}${seat(n++)}</div>`;
+  }
+  rows += divider;
+  rows += `<div class="row">${rowNum(12)}${seat(n++)}${seat(n++)}${aisle}${empty}<div class="special-box wc-box">${wcSVG}<span>WC</span></div></div>`;
+
+  const dataLabel = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  const chips = BUSES.map(b => {
+    const isMine = mine && mine.busId === b.id;
+    return `<button class="today-chip${b.id === bus.id ? ' on' : ''}" onclick="setTodayBus('${b.id}')">${b.name}<small>saída ${busDepartureLabel(b)}${isMine ? ' · sua reserva' : ''}</small></button>`;
+  }).join('');
+
+  let note;
+  if (blocked) {
+    note = `<div class="today-note warn">🔒 Seu acesso a reservas está bloqueado no momento.</div>`;
+  } else if (mine) {
+    note = `<div class="today-note">✅ Você já tem a poltrona <strong>${escapeHtml(String(mine.seat))}</strong> hoje na linha <strong>${escapeHtml(mine.busName || mine.busId || '')}</strong>. Para escolher outra, cancele a reserva em "Reservas Ativas".</div>`;
+  } else if (departed) {
+    note = `<div class="today-note warn">⏰ As reservas para hoje encerraram às ${CANCEL_CUTOFF_LABEL}. Não é mais possível escolher poltrona para hoje.</div>`;
+  } else {
+    note = `<div class="today-note">Toque em uma poltrona livre para reservá-la para hoje. Reservas e cancelamentos até as ${CANCEL_CUTOFF_LABEL}. Você pode ter uma poltrona por dia.</div>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="today-head">📅 ${dataLabel.charAt(0).toUpperCase() + dataLabel.slice(1)}</div>
+    <div class="today-bus-chips">${chips}</div>
+    ${note}
+    <div class="today-mets">
+      <div class="today-met"><span>Livres</span><b>${nFree}</b></div>
+      <div class="today-met"><span>Parciais</span><b>${nPart}</b></div>
+      <div class="today-met"><span>Ocupadas</span><b>${nOcc}</b></div>
+    </div>
+    <div class="today-legend">
+      <span><i style="background:var(--c1);border-color:var(--c4)"></i>Livre</span>
+      <span><i style="background:#d0d8d7;border-color:#9ab5b2"></i>Ocupada</span>
+      <span><i style="background:#DCEEFB;border-color:#3B82C4"></i>Só volta livre</span>
+      <span><i style="background:#FDEBD8;border-color:#D4720B"></i>Só ida livre</span>
+      <span><i style="background:#FFF8DC;border-color:#D4A017"></i>Monitor</span>
+      <span><i style="background:var(--c6);border-color:var(--c7)"></i>Sua poltrona</span>
+    </div>
+    <div class="today-map${canPick ? '' : ' readonly'}"><div class="cabin">${rows}</div></div>`;
+}
+
+function pickTodaySeat(num) {
+  if (!currentUser) return;
+  const bus = BUSES.find(b => b.id === todayBusId);
+  if (!bus) return;
+  if (getPriority(currentUser) === 'blocked') { showScreen('blocked'); return; }
+  if (myTicketToday()) { showToast('Você já tem uma poltrona reservada para hoje.'); renderTodaySeats(); return; }
+  if (isTodayBookingClosed()) { showToast(`⏰ As reservas para hoje encerraram às ${CANCEL_CUTOFF_LABEL}.`); renderTodaySeats(); return; }
+  const occ = getOccupiedForDays([getTodayStr()], bus.id);
+  const info = occ.get(num);
+  if (info && isSeatFullyTaken(info.directions)) {
+    showToast(`⚠️ A poltrona ${num} acabou de ser ocupada. Escolha outra.`);
+    renderTodaySeats();
+    return;
+  }
+  // O modal de embarque usa seatDirectionsToday para saber quais sentidos ainda estão livres
+  seatDirectionsToday.clear();
+  occ.forEach((i, s) => seatDirectionsToday.set(s, i.directions));
+  _todayPick = true;
+  _todayPickBus = bus.id;
+  openModal(num);
+}
+
+async function confirmTodaySeat(seat, local, direction, busId) {
+  if (_confirmandoReserva) return;
+  if (!currentUser) return;
+  const bus = BUSES.find(b => b.id === busId);
+  if (!bus) return;
+  const today = getTodayStr();
+  if (getPriority(currentUser) === 'blocked') { showScreen('blocked'); return; }
+  if (myTicketToday()) { showToast('Você já tem uma poltrona reservada para hoje.'); renderTodaySeats(); return; }
+  if (isTodayBookingClosed()) { showToast(`⏰ As reservas para hoje encerraram às ${CANCEL_CUTOFF_LABEL}.`); renderTodaySeats(); return; }
+  _confirmandoReserva = true;
+  try {
+    const dir = direction || 'ida_volta';
+    // Revalida no momento de gravar: alguém pode ter reservado a mesma poltrona/sentido agora há pouco
+    const occNow = getOccupiedForDays([today], bus.id);
+    const dirs = occNow.get(seat) ? occNow.get(seat).directions : null;
+    if (dirs && (dirs.has('ida_volta') || dir === 'ida_volta' || dirs.has(dir))) {
+      showToast(`⚠️ A poltrona ${seat} acabou de ser reservada (mesmo sentido). Escolha outra.`);
+      renderTodaySeats();
+      return;
+    }
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const code = 'PDS-' + Math.random().toString(36).substring(2, 7).toUpperCase() + '-' + seat;
+    const t = {
+      passenger: currentUser.name,
+      cpf: currentUser.cpf,
+      seat: String(seat),
+      local,
+      direction: dir,
+      code,
+      date: dateStr,
+      reservedAt: dateStr,
+      travelDate: today,
+      boardedAt: null,
+      busId: bus.id, busName: bus.name,
+      bus: 'Place',
+      valid: true
+    };
+    try {
+      await dbInsertTicketStrict(t);
+    } catch (err) {
+      const msg = String(err.message);
+      if (msg.includes('SEAT_TAKEN')) {
+        showToast(`⚠️ A poltrona ${seat} acabou de ser ocupada. Escolha outra.`);
+        renderTodaySeats();
+        return;
+      }
+      if (msg.includes('DUPLICATE_CPF_SAME_DAY')) {
+        showToast('Você já tem uma passagem para hoje. Cancele-a antes de reservar outra poltrona.');
+        renderTodaySeats();
+        return;
+      }
+      dbErr(err); // mesmo comportamento do fluxo semanal: mantém a reserva local e avisa
+    }
+    passagens.push({ ...t });
+    allPassagens.push({ ...t });
+    passagens.sort((a, b) => parseTicketDate(a.travelDate || a.date.slice(0, 10)) - parseTicketDate(b.travelDate || b.date.slice(0, 10)));
+    updatePassagensBadge();
+    showToast(`✅ Poltrona ${seat} reservada para hoje (${bus.name}).`);
+    renderTodaySeats();
+  } finally {
+    _confirmandoReserva = false;
+  }
 }
 
 function renderPassagens() {
   renderSwapRequests();
+  const isToday = passagensFilterStatus === 'today';
+  const todayWrap = document.getElementById('today-seats-wrap');
+  const listEl = document.getElementById('passagens-list');
+  const swapBtn = document.getElementById('btn-swap-mode');
+  if (todayWrap) todayWrap.style.display = isToday ? '' : 'none';
+  if (listEl) listEl.style.display = isToday ? 'none' : '';
+  if (swapBtn) swapBtn.style.display = isToday ? 'none' : '';
+  if (isToday) { renderTodaySeats(); return; }
   const el = document.getElementById('passagens-list');
   const mostrarCanceladas = passagensFilterStatus === 'cancelled';
   const filtradas = passagens.filter(t => mostrarCanceladas ? t.cancelled : !t.cancelled);
@@ -3664,7 +3931,7 @@ function openModal(num, el) {
   if (!currentDirection || !disponiveis.includes(currentDirection)) {
     currentDirection = disponiveis[0] || null;
   }
-  if (selected.has(num)) {
+  if (!_todayPick && selected.has(num)) {
     currentLocal = selected.get(num).local;
     const salvo = selected.get(num).direction;
     if (salvo && disponiveis.includes(salvo)) currentDirection = salvo;
@@ -3681,7 +3948,7 @@ function openModal(num, el) {
   });
   document.getElementById('modal-overlay').classList.add('open');
 }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentSeat=null; currentLocal=null; }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); currentSeat=null; currentLocal=null; _todayPick=false; }
 function handleOverlayClick(e) { if(e.target===document.getElementById('modal-overlay')) closeModal(); }
 function selectEmbarque(el, local) {
   document.querySelectorAll('#embarque-options .embarque-opt').forEach(o => o.classList.remove('active'));
@@ -3694,6 +3961,13 @@ function selectDirection(el, dir) {
 }
 async function confirmSeat() {
   if (!currentSeat || !currentLocal) return;
+  // Reserva feita pela aba "Poltronas de hoje" (dia atual) — fluxo próprio, sem o calendário semanal
+  if (_todayPick) {
+    const seat = currentSeat, local = currentLocal, dir = currentDirection, busId = _todayPickBus;
+    closeModal(); // também zera _todayPick
+    await confirmTodaySeat(seat, local, dir, busId);
+    return;
+  }
   const okBtn = document.getElementById('btn-ok');
   if (okBtn) okBtn.disabled = true;
   // Allow only 1 seat per passenger
