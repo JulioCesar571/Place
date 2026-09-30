@@ -2804,6 +2804,22 @@ function rebuildMonitorSeats(busId) {
   });
 }
 
+// Reserva ATIVA (hoje ou futura) de um passageiro numa poltrona de UM ônibus específico.
+// Usada para validar a poltrona de um monitor: a numeração 1 e 2 existe em todos os ônibus,
+// então a checagem precisa olhar só o ônibus escolhido — nunca o mapa da tela (occupied),
+// que para o admin mistura as poltronas de todas as linhas.
+function findSeatReservation(busId, seat, exceptCpf) {
+  const today = parseTicketDate(getTodayStr());
+  return allPassagens.find(t => {
+    if (t.cancelled) return false;
+    if (t.busId !== busId) return false;
+    if (exceptCpf && t.cpf === exceptCpf) return false;
+    const td = parseTicketDate(t.travelDate || (t.date ? t.date.slice(0,10) : null));
+    if (!td || td < today) return false;
+    return String(t.seat).split(',').map(x => parseInt(x.trim())).includes(seat);
+  }) || null;
+}
+
 // Poltrona livre para monitor em um ônibus — apenas 1 ou 2 por linha
 function nextFreeMonitorSeat(busId) {
   const taken = new Set(Object.values(USERS)
@@ -2931,8 +2947,10 @@ function saveUserStatus(cpf) {
       showToast(`⚠️ No ${bus.name}, a poltrona ${seat} já pertence a ${conflict.name.split(' ')[0]}.`);
       renderUsersMgmt(); return;
     }
-    if (occupied.has(seat)) {
-      showToast(`⚠️ A poltrona ${seat} está reservada por ${occupied.get(seat)}. Escolha outra.`);
+    const mudouPoltrona = !(u.role === 'monitor' && u.busId === busId && u.seat === seat);
+    const reserva = mudouPoltrona ? findSeatReservation(busId, seat, cpf) : null;
+    if (reserva) {
+      showToast(`⚠️ No ${bus.name}, a poltrona ${seat} está reservada por ${reserva.passenger} (${reserva.travelDate || 'sem data'}). Cancele essa reserva ou escolha outra poltrona.`);
       renderUsersMgmt(); return;
     }
     u.role = 'monitor';
@@ -5238,13 +5256,19 @@ function toggleMonitorPresence() {
   if (!monitorSeatActive[k]) {
     // Poltrona liberada — reservável na linha deste monitor
   } else {
-    // If a passenger booked it while the monitor was absent, cancel their ticket properly
-    if (occupied.has(seatNum)) {
-      const displaced = occupied.get(seatNum);
+    // If a passenger booked it while the monitor was absent, cancel their ticket properly.
+    // Escopo: só o ÔNIBUS deste monitor e o dia de HOJE (a numeração 1 e 2 se repete em todos os ônibus).
+    const todayStr = getTodayStr();
+    const mesmaPoltrona = p => !p.cancelled && p.busId === currentUser.busId
+      && (p.travelDate || (p.date ? p.date.slice(0,10) : null)) === todayStr
+      && String(p.seat).split(',').map(s=>parseInt(s.trim())).includes(seatNum);
+    const deslocado = allPassagens.find(mesmaPoltrona);
+    if (deslocado) {
+      const displaced = deslocado.passenger;
       occupied.delete(seatNum);
       boardedSeats.delete(seatNum);
       [passagens, allPassagens].forEach(list => {
-        const idx = list.findIndex(p => !p.cancelled && String(p.seat).split(',').map(s=>parseInt(s.trim())).includes(seatNum));
+        const idx = list.findIndex(mesmaPoltrona);
         if (idx >= 0) { list[idx].cancelled = true; list[idx].cancelReason = 'Poltrona retomada pelo monitor'; }
       });
       showToast(`⚠️ Reserva de ${displaced} na poltrona ${seatNum} foi cancelada.`);
@@ -5578,7 +5602,8 @@ async function createUser() {
     if (seat !== 1 && seat !== 2) { cuShowError('Poltrona de monitor deve ser 1 ou 2 — ambas já ocupadas nesta linha.'); return; }
     const conflict = Object.values(USERS).find(x => x.role === 'monitor' && x.seat === seat && x.busId === busId);
     if (conflict) { cuShowError(`No ônibus ${busId}, a poltrona ${seat} já pertence a ${conflict.name.split(' ')[0]}.`); return; }
-    if (occupied.has(seat)) { cuShowError(`A poltrona ${seat} está reservada por ${occupied.get(seat)}. Escolha outra.`); return; }
+    const reservaCu = findSeatReservation(busId, seat, cpf);
+    if (reservaCu) { cuShowError(`No ônibus ${busId}, a poltrona ${seat} está reservada por ${reservaCu.passenger} (${reservaCu.travelDate || 'sem data'}). Cancele essa reserva ou escolha outra poltrona.`); return; }
     newUser.seat = seat;
     newUser.busId = busId;
   }
@@ -5851,6 +5876,11 @@ async function saveEditUser() {
     if (conflict) {
       const bName = (BUSES.find(b=>b.id===busId)||{}).name || busId;
       euShowError(`No ${bName}, a poltrona ${seat} já pertence a ${conflict.name.split(' ')[0]}.`);
+      return;
+    }
+    const reservaEu = (seat !== orig.seat || busId !== orig.busId) ? findSeatReservation(busId, seat, editingCpf) : null;
+    if (reservaEu) {
+      euShowError(`No ${(BUSES.find(b=>b.id===busId)||{}).name || busId}, a poltrona ${seat} está reservada por ${reservaEu.passenger} (${reservaEu.travelDate || 'sem data'}). Cancele essa reserva ou escolha outra poltrona.`);
       return;
     }
     updated.seat = seat;
