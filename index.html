@@ -881,6 +881,29 @@ body{-webkit-tap-highlight-color:transparent;}
   .empty-cell{width:38px;}
   .modal{padding:24px 18px;}
 }
+
+/* ── Modais no celular: nunca cortar o conteúdo ──────────────────────────────
+   Antes o overlay centralizava o modal sem permitir rolagem: com 5 pontos de
+   embarque o cartão ficava mais alto que a tela e cortava o topo e os botões.
+   Agora: o overlay rola, o modal usa margin:auto (centraliza só se couber) e, no
+   modal da poltrona, o conteúdo rola por dentro com os botões sempre visíveis.
+   z-index acima do botão "Sair" (600) para ele não ficar por cima dos botões. */
+.modal-overlay{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;z-index:700;
+  padding:max(1rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(1rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left));}
+.modal{margin:auto;}
+#modal{display:flex;flex-direction:column;max-height:calc(100vh - 2rem);max-height:calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));}
+#modal .modal-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;margin:0 -8px;padding:0 8px;}
+#modal .modal-actions{flex-shrink:0;margin-top:14px;}
+@media (max-width:480px){
+  .modal{padding:22px 18px;border-radius:18px;}
+  .modal-sub{margin-bottom:14px;}
+  .field-group{margin-bottom:12px;}
+  .embarque-options{gap:8px;}
+  .embarque-opt{padding:10px 12px;gap:10px;}
+  .opt-icon{width:32px;height:32px;font-size:16px;border-radius:8px;}
+  .opt-name{font-size:13.5px;}
+  .opt-addr{font-size:10.5px;}
+}
 </style>
 </head>
 <body>
@@ -1136,6 +1159,7 @@ body{-webkit-tap-highlight-color:transparent;}
 <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
   <div class="modal" id="modal">
     <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-body">
     <div class="modal-seat-badge">
       <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M7 4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4zm2 1v7h6V5H9zm-3 12a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-2z"/></svg>
       Poltrona <span id="modal-seat-num">—</span>
@@ -1164,6 +1188,7 @@ body{-webkit-tap-highlight-color:transparent;}
         <div class="embarque-opt" data-dir="volta" onclick="selectDirection(this,'volta')">⬅️ Somente volta</div>
       </div>
     </div>
+    </div><!-- /modal-body -->
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       <button class="btn-ok" id="btn-ok" onclick="confirmSeat()" disabled>Confirmar Poltrona</button>
