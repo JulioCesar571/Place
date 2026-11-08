@@ -861,6 +861,102 @@ body{-webkit-tap-highlight-color:transparent;}
 .scan-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--c7);margin-bottom:4px;}
 .scan-sub{font-size:13px;color:var(--c5);margin-bottom:24px;}
 
+/* ═══ SUPORTE — chat interno ═══ */
+.sup-fab{position:fixed;bottom:18px;left:16px;z-index:600;display:none;align-items:center;gap:8px;background:#fff;color:var(--c7);border:2px solid var(--c3);border-radius:50px;padding:10px 16px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 8px 26px rgba(23,79,73,0.25);transition:transform .15s;}
+.sup-fab:hover{transform:translateY(-2px);}
+.sup-fab svg{width:17px;height:17px;flex-shrink:0;color:var(--c4);}
+.sup-dot{position:absolute;top:-7px;right:-4px;background:#e24b4a;color:#fff;border-radius:11px;min-width:21px;height:21px;font-size:11px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 5px;font-family:'DM Sans',sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+@media(max-width:700px){.sup-fab{padding:10px 14px;font-size:12px;bottom:14px;left:12px;}}
+
+.sup-overlay{position:fixed;inset:0;z-index:900;background:rgba(15,46,42,.5);display:none;align-items:center;justify-content:center;padding:16px;}
+.sup-overlay.show{display:flex;}
+.sup-card{background:#fff;border-radius:22px;width:100%;max-width:460px;height:min(680px,calc(100vh - 32px));height:min(680px,calc(100dvh - 32px));display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+@media(max-width:520px){.sup-overlay{padding:0;}.sup-card{max-width:none;height:100vh;height:100dvh;border-radius:0;}}
+.sup-head{background:linear-gradient(135deg,var(--c7),var(--c6));color:#fff;padding:16px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.sup-head-ico{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sup-head-ico svg{width:22px;height:22px;color:var(--c2);}
+.sup-head-title{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;line-height:1.2;}
+.sup-head-sub{font-size:12px;color:var(--c2);margin-top:2px;}
+.sup-close{margin-left:auto;background:rgba(255,255,255,.14);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0;}
+.sup-msgs{flex:1;min-height:0;overflow-y:auto;padding:16px 14px;background:var(--c1);display:flex;flex-direction:column;gap:6px;-webkit-overflow-scrolling:touch;}
+.sup-welcome{background:#fff;border:1.5px dashed var(--c3);border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.5;color:var(--c6);margin:auto 0;}
+.sup-empty{text-align:center;color:var(--c5);font-size:13px;margin:auto 0;}
+.sup-day{align-self:center;background:rgba(23,79,73,.1);color:var(--c6);font-size:11px;font-weight:700;border-radius:10px;padding:3px 10px;margin:8px 0 4px;letter-spacing:.04em;}
+.sup-row{display:flex;}
+.sup-row.own{justify-content:flex-end;}
+.sup-bubble{max-width:82%;background:#fff;border:1px solid var(--c2);border-radius:16px 16px 16px 4px;padding:9px 12px 6px;color:var(--c7);font-size:14px;line-height:1.45;word-wrap:break-word;overflow-wrap:anywhere;}
+.sup-bubble.own{background:var(--c4);border-color:var(--c4);color:#fff;border-radius:16px 16px 4px 16px;}
+.sup-who{font-size:11px;font-weight:700;color:var(--c5);margin-bottom:2px;font-family:'Syne',sans-serif;}
+.sup-time{font-size:10.5px;opacity:.7;text-align:right;margin-top:3px;}
+.sup-img{display:block;max-width:100%;max-height:240px;border-radius:10px;margin-bottom:6px;cursor:zoom-in;background:rgba(0,0,0,.06);min-width:90px;min-height:60px;object-fit:cover;}
+.sup-img.broken{cursor:default;min-height:40px;font-size:12px;}
+.sup-notice{background:#fff8e1;border-top:1px solid #f3dc9a;color:#7a5a00;font-size:12.5px;padding:8px 14px;text-align:center;flex-shrink:0;}
+.sup-preview{display:none;align-items:center;gap:10px;padding:8px 12px;background:#fff;border-top:1px solid var(--c2);flex-shrink:0;}
+.sup-preview img{width:46px;height:46px;border-radius:8px;object-fit:cover;}
+.sup-preview span{font-size:12.5px;color:var(--c6);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sup-preview button{background:none;border:none;color:#c0392b;font-size:18px;cursor:pointer;}
+.sup-compose{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;background:#fff;border-top:1px solid var(--c2);flex-shrink:0;}
+.sup-compose textarea{flex:1;resize:none;border:1.5px solid var(--c2);border-radius:14px;padding:10px 12px;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.35;color:var(--c7);max-height:120px;min-height:42px;outline:none;}
+.sup-compose textarea:focus{border-color:var(--c4);}
+.sup-attach{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--c2);background:var(--c1);cursor:pointer;font-size:18px;flex-shrink:0;}
+.sup-mic{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--c2);background:var(--c1);cursor:pointer;font-size:18px;flex-shrink:0;display:none;align-items:center;justify-content:center;padding:0;}
+.sup-mic.rec{background:#e24b4a;border-color:#e24b4a;color:#fff;animation:supPulse 1.2s infinite;}
+@keyframes supPulse{0%{box-shadow:0 0 0 0 rgba(226,75,74,.55);}70%{box-shadow:0 0 0 10px rgba(226,75,74,0);}100%{box-shadow:0 0 0 0 rgba(226,75,74,0);}}
+.sup-listening{display:none;background:#fdecec;color:#a32d2d;font-size:12px;font-weight:700;text-align:center;padding:5px 10px;border-top:1px solid #f5c2c2;flex-shrink:0;}
+.sup-send{height:42px;padding:0 16px;border:none;border-radius:21px;background:var(--c4);color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0;}
+.sup-send:disabled{opacity:.55;cursor:default;}
+.sup-lightbox{position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out;}
+.sup-lightbox.show{display:flex;}
+.sup-lightbox img{max-width:100%;max-height:100%;border-radius:8px;}
+
+/* Painel do admin */
+.sup-admin-wrap{display:grid;grid-template-columns:330px 1fr;gap:16px;height:640px;}
+.sup-list-col,.sup-chat-col{background:#fff;border:1px solid var(--c2);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+.sup-filters{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--c1);flex-wrap:wrap;}
+.sup-filters button{border:1.5px solid var(--c2);background:#fff;color:var(--c6);border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.sup-filters button.active{background:var(--c7);border-color:var(--c7);color:#fff;}
+.sup-search{margin:0 10px 10px;border:1.5px solid var(--c2);border-radius:12px;padding:8px 12px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;}
+.sup-thread-list{flex:1;overflow-y:auto;}
+.sup-thread{display:flex;gap:10px;padding:12px 14px;border-bottom:1px solid var(--c1);cursor:pointer;align-items:flex-start;}
+.sup-thread:hover{background:var(--c1);}
+.sup-thread.active{background:var(--c1);box-shadow:inset 3px 0 0 var(--c4);}
+.sup-thread-av{width:38px;height:38px;border-radius:50%;background:var(--c4);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sup-thread-body{flex:1;min-width:0;}
+.sup-thread-top{display:flex;gap:8px;align-items:baseline;}
+.sup-thread-name{font-weight:700;font-size:14px;color:var(--c7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.sup-thread-time{font-size:11px;color:var(--c5);flex-shrink:0;}
+.sup-thread-last{font-size:12.5px;color:var(--c5);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sup-thread-meta{display:flex;gap:6px;align-items:center;margin-top:4px;}
+.sup-unread{background:#e24b4a;color:#fff;border-radius:10px;min-width:19px;height:19px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}
+.sup-pill{font-size:10.5px;font-weight:700;border-radius:10px;padding:2px 8px;}
+.sup-pill.open{background:#fff3cd;color:#7a5a00;}
+.sup-pill.resolved{background:#d6f0e6;color:#0f6e56;}
+.sup-chat-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--c1);flex-shrink:0;}
+.sup-chat-head .sup-thread-name{font-size:15px;}
+.sup-back{display:none;border:none;background:var(--c1);color:var(--c7);border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;flex-shrink:0;}
+.sup-resolve{margin-left:auto;border:1.5px solid var(--c4);background:#fff;color:var(--c6);border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:700;cursor:pointer;flex-shrink:0;font-family:'DM Sans',sans-serif;}
+.sup-resolve.reopen{border-color:#e0a000;color:#7a5a00;}
+.sup-quick{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;background:#fff;border-top:1px solid var(--c1);flex-shrink:0;}
+.sup-quick button{white-space:nowrap;border:1.5px solid var(--c2);background:var(--c1);color:var(--c6);border-radius:16px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.sup-chat-empty{margin:auto;color:var(--c5);font-size:14px;text-align:center;padding:20px;}
+@media(max-width:760px){
+  .sup-admin-wrap{grid-template-columns:1fr;height:calc(100dvh - 120px);min-height:480px;}
+  .sup-chat-col{display:none;}
+  .sup-admin-wrap.chat-open .sup-list-col{display:none;}
+  .sup-admin-wrap.chat-open .sup-chat-col{display:flex;}
+  .sup-back{display:inline-flex;align-items:center;justify-content:center;}
+}
+
+/* ═══ Atalho de ajuda na tela de login ═══ */
+.login-help{display:block;margin:16px auto 0;background:none;border:none;color:var(--c5);font-family:'DM Sans',sans-serif;font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;opacity:.85;padding:4px 8px;}
+.login-help:hover{opacity:1;color:var(--c6);}
+.lh-overlay{position:fixed;inset:0;z-index:900;background:rgba(15,46,42,.5);display:none;align-items:center;justify-content:center;padding:16px;}
+.lh-overlay.show{display:flex;}
+.lh-card{background:#fff;border-radius:22px;width:100%;max-width:380px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.35);text-align:center;}
+.lh-title{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--c7);margin-bottom:8px;}
+.lh-text{font-size:14px;line-height:1.5;color:var(--c6);margin-bottom:16px;}
+.lh-wa{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;background:#25D366;color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;cursor:pointer;text-decoration:none;margin-bottom:10px;}
+.lh-close{background:none;border:none;color:var(--c5);font-size:13px;cursor:pointer;padding:6px;font-family:'DM Sans',sans-serif;}
 .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--c7);color:var(--c2);padding:13px 22px;border-radius:22px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;opacity:0;transition:opacity 0.3s,transform 0.35s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:999;white-space:normal;max-width:min(88vw,420px);width:max-content;text-align:center;line-height:1.45;box-shadow:0 8px 32px rgba(23,79,73,0.35);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
@@ -949,6 +1045,8 @@ body{-webkit-tap-highlight-color:transparent;}
         <input class="form-input" id="login-pass" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
       <button class="btn-login" onclick="doLogin()">Entrar</button>
+      <!-- Atalho de suporte no login desativado por enquanto. Para reativar, volte aqui:
+      <button class="login-help" type="button" onclick="loginHelpOpen()">Dúvidas ou sugestões? Fale com o Suporte</button> -->
   </div>
 </div>
 
@@ -1581,6 +1679,45 @@ body{-webkit-tap-highlight-color:transparent;}
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M4 16c0 .88.39 1.67 1 2.22V20a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h8v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1.78c.61-.55 1-1.34 1-2.22V6c0-3.5-3.58-4-8-4s-8 .5-8 4v10zm3.5 1a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm9 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM18 11H6V6h12v5z"/></svg>
         Linhas &amp; Pontos
       </button>
+      <button class="nav-btn" id="adm-tab-suporte" onclick="switchAdminTab('suporte')">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z"/></svg>
+        Suporte
+        <span class="nav-badge" id="sup-admin-badge" style="display:none;background:#e24b4a">0</span>
+      </button>
+    </div>
+
+    <!-- TAB: SUPORTE -->
+    <div class="admin-tab-panel" id="adm-panel-suporte">
+      <div class="admin-card">
+        <div class="admin-card-title">💬 Suporte aos usuários</div>
+        <div class="sup-admin-wrap" id="sup-admin-wrap">
+          <div class="sup-list-col">
+            <div class="sup-filters" id="sup-filters">
+              <button data-f="open" class="active" onclick="supSetFilter('open')">Pendentes</button>
+              <button data-f="resolved" onclick="supSetFilter('resolved')">Resolvidas</button>
+              <button data-f="all" onclick="supSetFilter('all')">Todas</button>
+            </div>
+            <input class="sup-search" id="sup-search" type="search" placeholder="Buscar por nome ou CPF..." oninput="supSetSearch(this.value)">
+            <div class="sup-thread-list" id="sup-thread-list"></div>
+          </div>
+          <div class="sup-chat-col" id="sup-chat-col">
+            <div class="sup-chat-empty" id="sup-a-empty">Selecione uma conversa ao lado para ler e responder.</div>
+            <div id="sup-a-chat" style="display:none;flex-direction:column;min-height:0;flex:1;">
+              <div class="sup-chat-head">
+                <button class="sup-back" onclick="supAdminBack()" aria-label="Voltar">←</button>
+                <div style="min-width:0">
+                  <div class="sup-thread-name" id="sup-a-name"></div>
+                  <div class="sup-thread-last" id="sup-a-cpf"></div>
+                </div>
+                <button class="sup-resolve" id="sup-a-resolve" onclick="supToggleResolved()">✅ Marcar como resolvido</button>
+              </div>
+              <div class="sup-msgs" id="sup-a-msgs"></div>
+              <div class="sup-quick" id="sup-a-quick"></div>
+              <div id="sup-a-composewrap"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- TAB 1: RELAÇÃO -->
@@ -2134,6 +2271,37 @@ body{-webkit-tap-highlight-color:transparent;}
   </div>
 </div>
 
+<!-- ═══ SUPORTE: botão flutuante, chat do usuário e visualizador de imagem ═══ -->
+<button class="sup-fab" id="sup-fab" onclick="supportOpen()" title="Falar com o suporte">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z"/></svg>
+  Suporte
+  <span class="sup-dot" id="sup-fab-dot">0</span>
+</button>
+<div class="sup-overlay" id="sup-overlay" onclick="if(event.target===this)supportClose()">
+  <div class="sup-card">
+    <div class="sup-head">
+      <div class="sup-head-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM7 9h10v2H7V9zm6 5H7v-2h6v2zm4-6H7V6h10v2z"/></svg></div>
+      <div>
+        <div class="sup-head-title">Suporte Place</div>
+        <div class="sup-head-sub">Conte seu problema ou dúvida. Respondemos por aqui.</div>
+      </div>
+      <button class="sup-close" onclick="supportClose()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="sup-msgs" id="sup-u-msgs"></div>
+    <div class="sup-notice" id="sup-u-notice" style="display:none">✅ Esta conversa foi marcada como resolvida. Prints enviados foram apagados e as mensagens ficam disponíveis por mais 3 dias. Se precisar, é só enviar uma nova mensagem.</div>
+    <div id="sup-u-composewrap"></div>
+  </div>
+</div>
+<div class="sup-lightbox" id="sup-lightbox" onclick="this.classList.remove('show')"><img id="sup-lightbox-img" alt=""></div>
+
+<div class="lh-overlay" id="lh-overlay" onclick="if(event.target===this)loginHelpClose()">
+  <div class="lh-card">
+    <div class="lh-title">Fale com o Suporte</div>
+    <div class="lh-text" id="lh-text"></div>
+    <a class="lh-wa" id="lh-wa" href="#" target="_blank" rel="noopener" style="display:none">Chamar no WhatsApp</a>
+    <button class="lh-close" type="button" onclick="loginHelpClose()">Fechar</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -3697,6 +3865,7 @@ function updatePassagensBadge() {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
+  try { supportOnScreen(id); } catch(e) {}
 }
 function showApp() { showScreen('app'); }
 function showTicket() { showScreen('ticket'); }
@@ -7202,7 +7371,7 @@ function populateBusSelects() {
 
 // ---- ADMIN TABS ----
 function switchAdminTab(tab) {
-  const tabs = ['relacao','ocupacao','tempo','dashboard','resumos','usuarios','linhas'];
+  const tabs = ['relacao','ocupacao','tempo','dashboard','resumos','usuarios','linhas','suporte'];
   tabs.forEach(t => {
     const panel = document.getElementById('adm-panel-' + t);
     if (panel) panel.classList.toggle('active', t === tab);
@@ -7216,6 +7385,7 @@ function switchAdminTab(tab) {
   if (tab === 'usuarios') renderUsersMgmt();
   if (tab === 'resumos') loadTripReports();
   if (tab === 'linhas') renderLinhasPontos();
+  if (tab === 'suporte') supAdminOpen();
 }
 
 function onOccPeriodChange() {
@@ -7667,6 +7837,477 @@ function downloadBlob(blob, filename) {
 }
 
 // ---- TOAST ----
+// ═══════════════════════════════════════════════════════════════
+// SUPORTE — chat interno (usuário ⇄ administração)
+// Tabelas: support_threads (1 conversa por usuário) e support_messages.
+// Prints ficam no bucket privado "support" (URL assinada de 1h para exibir).
+// Atualização por consulta periódica leve: só 1 linha por usuário (ou a lista
+// de conversas para o admin) a cada 30s; com o chat aberto, a cada 8s.
+// ═══════════════════════════════════════════════════════════════
+const SUP_QUICK = [
+  { label: 'Recebemos', text: 'Olá! Recebemos sua mensagem e já vamos verificar. Obrigado por avisar.' },
+  { label: 'Cancelar reserva', text: 'Para cancelar uma reserva: abra "Minhas Passagens", escolha a reserva e toque em Cancelar. O prazo vai até as 17h do dia da viagem.' },
+  { label: 'Trocar poltrona', text: 'Para ajudar com a troca de poltrona, nos diga o dia da viagem, a poltrona atual e a que você prefere. Vamos verificar se está livre.' },
+  { label: 'Reiniciar o app', text: 'Tente sair do app, fechá-lo por completo e abrir novamente. Se o problema continuar, envie um print da tela por aqui.' },
+  { label: 'Pedir print', text: 'Pode nos enviar um print da tela com o problema? Use o botão do clipe aqui ao lado.' },
+  { label: 'Resolvido?', text: 'Conseguimos resolver? Se precisar de mais alguma coisa, é só chamar por aqui.' }
+];
+const SUP = {
+  chat: { u: { msgs: [], key: '' }, a: { msgs: [], key: '' } },
+  threads: [], activeCpf: null, filter: 'open', search: '',
+  pendingFile: { u: null, a: null }, myStatus: 'open', myUnread: 0,
+  urlCache: {}, sending: false, open: false, fast: null, lastTick: 0
+};
+const supEl = id => document.getElementById(id);
+const supIsAdmin = () => !!currentUser && currentUser.role === 'admin';
+const supFolder = cpf => String(cpf).replace(/\D/g, '');
+
+// ── Armazenamento de imagens ──────────────────────────────────
+async function supStorage(path, opts, _retried) {
+  const token = authSession && authSession.access_token ? authSession.access_token : SB_KEY;
+  const res = await fetch(SB_BASE + '/storage/v1' + path, {
+    ...opts, headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token, ...((opts && opts.headers) || {}) }
+  });
+  if (res.status === 401 && authSession && !_retried) {
+    if (await authRefresh()) return supStorage(path, opts, true);
+  }
+  return res;
+}
+function supCompress(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const max = 1280; let w = img.naturalWidth, h = img.naturalHeight;
+      const k = Math.min(1, max / Math.max(w, h)); w = Math.round(w * k); h = Math.round(h * k);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('compress')), 'image/jpeg', 0.72);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+    img.src = url;
+  });
+}
+async function supUpload(blob, cpf) {
+  const path = supFolder(cpf) + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+  const res = await supStorage('/object/support/' + path, { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'false' }, body: blob });
+  if (!res.ok) throw new Error('upload ' + res.status);
+  return path;
+}
+async function supSignedUrl(path) {
+  const c = SUP.urlCache[path];
+  if (c && c.exp > Date.now()) return c.url;
+  const res = await supStorage('/object/sign/support/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 3600 }) });
+  if (!res.ok) throw new Error('sign ' + res.status);
+  const j = await res.json();
+  const url = SB_BASE + '/storage/v1' + j.signedURL;
+  SUP.urlCache[path] = { url, exp: Date.now() + 50 * 60 * 1000 };
+  return url;
+}
+function supHydrate(container) {
+  container.querySelectorAll('img.sup-img[data-path]:not([src])').forEach(async img => {
+    try { img.src = await supSignedUrl(img.dataset.path); }
+    catch (e) { img.classList.add('broken'); img.alt = 'Imagem indisponível'; }
+  });
+}
+function supOpenImage(img) {
+  if (!img.src || img.classList.contains('broken')) return;
+  supEl('sup-lightbox-img').src = img.src;
+  supEl('sup-lightbox').classList.add('show');
+}
+
+// ── Montagem dos campos de envio (usuário 'u' e admin 'a') ────
+function supComposeHtml(p) {
+  return `<div class="sup-preview" id="sup-${p}-preview"></div>
+  <div class="sup-listening" id="sup-${p}-listening">🎙️ Ouvindo... fale agora. Toque no microfone para parar.</div>
+  <div class="sup-compose">
+    <button class="sup-attach" type="button" title="Anexar print ou foto" onclick="supEl('sup-${p}-file').click()">📎</button>
+    <input type="file" id="sup-${p}-file" accept="image/*" style="display:none" onchange="supPickFile('${p}', this)">
+    <button class="sup-mic" id="sup-${p}-mic" type="button" title="Falar para escrever" aria-label="Falar para escrever" onclick="supVoiceToggle('${p}')">🎤</button>
+    <textarea id="sup-${p}-text" rows="1" maxlength="1000" placeholder="${p === 'u' ? 'Escreva sua mensagem...' : 'Escreva a resposta...'}" oninput="supAutoGrow(this)" onkeydown="supKey(event,'${p}')"></textarea>
+    <button class="sup-send" id="sup-${p}-send" type="button" onclick="supSend('${p}')">Enviar</button>
+  </div>`;
+}
+// ── Ditado por voz (fala → texto) ─────────────────────────────
+const SUP_SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+const SUP_VOICE = { rec: null, p: null, base: '' };
+function supVoiceSetUi(p, on) {
+  const m = supEl('sup-' + p + '-mic'), l = supEl('sup-' + p + '-listening');
+  if (m) { m.classList.toggle('rec', on); m.textContent = on ? '⏹' : '🎤'; }
+  if (l) l.style.display = on ? 'block' : 'none';
+}
+function supVoiceStop() {
+  const r = SUP_VOICE.rec, p = SUP_VOICE.p;
+  SUP_VOICE.rec = null; SUP_VOICE.p = null;
+  if (r) { try { r.onresult = r.onerror = r.onend = null; r.stop(); } catch (e) {} }
+  if (p) supVoiceSetUi(p, false);
+}
+function supVoiceToggle(p) {
+  if (!SUP_SR) { showToast('Seu navegador não permite ditado por voz.'); return; }
+  if (SUP_VOICE.rec && SUP_VOICE.p === p) { supVoiceStop(); return; }
+  supVoiceStop();
+  const ta = supEl('sup-' + p + '-text'); if (!ta) return;
+  const r = new SUP_SR();
+  r.lang = 'pt-BR'; r.interimResults = true; r.continuous = true; r.maxAlternatives = 1;
+  SUP_VOICE.rec = r; SUP_VOICE.p = p; SUP_VOICE.base = ta.value ? ta.value.replace(/\s+$/, '') + ' ' : '';
+  r.onresult = ev => {
+    // Refaz o texto a partir de todos os resultados da sessão (evita repetir trechos)
+    let txt = '';
+    for (let i = 0; i < ev.results.length; i++) txt += ev.results[i][0].transcript;
+    txt = txt.replace(/^\s+/, '');
+    ta.value = (SUP_VOICE.base + txt).slice(0, 1000);
+    supAutoGrow(ta); ta.scrollTop = ta.scrollHeight;
+  };
+  r.onerror = ev => {
+    const e = ev && ev.error;
+    if (e === 'not-allowed' || e === 'service-not-allowed') showToast('🎤 Permita o uso do microfone no navegador para ditar a mensagem.', 5000);
+    else if (e === 'audio-capture') showToast('🎤 Não encontramos um microfone neste aparelho.', 4500);
+    else if (e === 'network') showToast('🎤 Sem conexão para transcrever a voz. Tente de novo.', 4500);
+    else if (e === 'no-speech') showToast('🎤 Não ouvimos nada. Toque no microfone e fale de novo.', 3500);
+    if (e !== 'aborted') supVoiceStop();
+  };
+  r.onend = () => { if (SUP_VOICE.rec === r) supVoiceStop(); };
+  try { r.start(); supVoiceSetUi(p, true); ta.focus(); }
+  catch (e) { supVoiceStop(); showToast('🎤 Não foi possível iniciar o microfone.'); }
+}
+function supVoiceInit() {
+  if (!SUP_SR) return;
+  ['u', 'a'].forEach(p => { const m = supEl('sup-' + p + '-mic'); if (m) m.style.display = 'inline-flex'; });
+}
+
+function supInit() {
+  const u = supEl('sup-u-composewrap'), a = supEl('sup-a-composewrap');
+  if (u) u.innerHTML = supComposeHtml('u');
+  if (a) a.innerHTML = supComposeHtml('a');
+  supVoiceInit();
+  const q = supEl('sup-a-quick');
+  if (q) q.innerHTML = SUP_QUICK.map((r, i) => `<button type="button" title="${escapeHtml(r.text)}" onclick="supQuick(${i})">${escapeHtml(r.label)}</button>`).join('');
+}
+function supAutoGrow(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; }
+function supKey(e, p) {
+  if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 700) { e.preventDefault(); supSend(p); }
+}
+function supQuick(i) {
+  const ta = supEl('sup-a-text'); if (!ta) return;
+  ta.value = (ta.value ? ta.value.trim() + ' ' : '') + SUP_QUICK[i].text;
+  supAutoGrow(ta); ta.focus();
+}
+function supPickFile(p, input) {
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  if (!/^image\//.test(f.type)) { showToast('Escolha uma imagem (print ou foto).'); return; }
+  if (f.size > 15 * 1024 * 1024) { showToast('Imagem muito grande. Escolha uma menor que 15 MB.'); return; }
+  SUP.pendingFile[p] = f; supRenderPreview(p);
+}
+function supRenderPreview(p) {
+  const box = supEl('sup-' + p + '-preview'); if (!box) return;
+  const f = SUP.pendingFile[p];
+  if (!f) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const url = URL.createObjectURL(f);
+  box.style.display = 'flex';
+  box.innerHTML = `<img src="${url}" alt=""><span>${escapeHtml(f.name || 'imagem')}</span><button type="button" onclick="supClearFile('${p}')" aria-label="Remover imagem">✕</button>`;
+}
+function supClearFile(p) { SUP.pendingFile[p] = null; supRenderPreview(p); }
+
+// ── Mensagens ─────────────────────────────────────────────────
+function supFmtTime(iso) { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+function supFmtDay(iso) {
+  const d = new Date(iso), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return 'Hoje';
+  if (d.toDateString() === y.toDateString()) return 'Ontem';
+  return d.toLocaleDateString('pt-BR');
+}
+function supMsgsHtml(msgs, mine, welcome, otherLabel) {
+  if (!msgs.length) return welcome
+    ? `<div class="sup-welcome">${welcome}</div>`
+    : '<div class="sup-empty">Nenhuma mensagem ainda.</div>';
+  let html = '', lastDay = '';
+  msgs.forEach(m => {
+    const day = supFmtDay(m.created_at);
+    if (day !== lastDay) { html += `<div class="sup-day">${day}</div>`; lastDay = day; }
+    const own = m.sender === mine;
+    const who = (!own && otherLabel) ? `<div class="sup-who">${escapeHtml(otherLabel)}</div>` : '';
+    const img = m.image_path ? `<img class="sup-img" data-path="${escapeHtml(m.image_path)}" alt="Imagem enviada" onclick="supOpenImage(this)">` : '';
+    const text = m.body ? `<div class="sup-text">${escapeHtml(m.body).replace(/\n/g, '<br>')}</div>` : '';
+    html += `<div class="sup-row ${own ? 'own' : ''}"><div class="sup-bubble ${own ? 'own' : ''}">${who}${img}${text}<div class="sup-time">${supFmtTime(m.created_at)}</div></div></div>`;
+  });
+  return html;
+}
+function supRenderChat(p) {
+  const box = supEl('sup-' + p + '-msgs'); if (!box) return;
+  const msgs = SUP.chat[p].msgs;
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.innerHTML = p === 'u'
+    ? supMsgsHtml(msgs, 'user', 'Olá! 👋 Como podemos ajudar? Conte o problema ou a dúvida com o máximo de detalhes. Se puder, anexe um print da tela pelo botão do clipe.', 'Administração')
+    : supMsgsHtml(msgs, 'admin', null, null);
+  supHydrate(box);
+  if (nearBottom || SUP.chat[p].justOpened) { box.scrollTop = box.scrollHeight; SUP.chat[p].justOpened = false; }
+}
+async function supFetchMessages(cpf) {
+  return sb('/support_messages?cpf=eq.' + encodeURIComponent(cpf) + '&select=*&order=created_at.asc&limit=500');
+}
+// Atualiza a conversa 'u' (usuário) ou 'a' (admin); renderiza só se algo mudou
+async function supRefreshChat(p, opening) {
+  const cpf = p === 'u' ? (currentUser && currentUser.cpf) : SUP.activeCpf;
+  if (!cpf) return;
+  try {
+    const msgs = await supFetchMessages(cpf);
+    if (p === 'a' && SUP.activeCpf !== cpf) return; // trocou de conversa durante a consulta
+    const last = msgs.length ? msgs[msgs.length - 1] : null;
+    const key = msgs.length + ':' + (last ? last.id : 0);
+    const changed = key !== SUP.chat[p].key;
+    SUP.chat[p].msgs = msgs; SUP.chat[p].key = key;
+    if (opening) SUP.chat[p].justOpened = true;
+    if (changed || opening) supRenderChat(p);
+    if (p === 'u') {
+      const rows = await sb('/support_threads?select=status,unread_user&limit=1').catch(() => []);
+      const t = rows[0];
+      SUP.myStatus = t ? t.status : 'open';
+      supEl('sup-u-notice').style.display = (t && t.status === 'resolved') ? 'block' : 'none';
+      if (t && t.unread_user > 0) { await sb('/rpc/support_mark_read_user', { method: 'POST', body: '{}' }).catch(() => {}); supSetFab(0); }
+    } else {
+      const th = SUP.threads.find(x => x.cpf === cpf);
+      if (th && th.unread_admin > 0) {
+        await sb('/rpc/support_mark_read_admin', { method: 'POST', body: JSON.stringify({ p_cpf: cpf }) }).catch(() => {});
+        th.unread_admin = 0; supAdminBadge(); supRenderThreadList();
+      }
+    }
+  } catch (e) { console.warn('suporte:', e.message); }
+}
+async function supSend(p) {
+  supVoiceStop();
+  if (SUP.sending) return;
+  const ta = supEl('sup-' + p + '-text'), btn = supEl('sup-' + p + '-send');
+  const text = ta.value.trim(), file = SUP.pendingFile[p];
+  if (!text && !file) return;
+  const cpf = p === 'u' ? (currentUser && currentUser.cpf) : SUP.activeCpf;
+  if (!cpf) return;
+  SUP.sending = true; btn.disabled = true; btn.textContent = 'Enviando...';
+  try {
+    let image_path = null;
+    if (file) { const blob = await supCompress(file); image_path = await supUpload(blob, cpf); }
+    await sb('/support_messages', { method: 'POST', body: JSON.stringify([{ cpf, sender: p === 'u' ? 'user' : 'admin', body: text || null, image_path }]) });
+    ta.value = ''; supAutoGrow(ta); SUP.pendingFile[p] = null; supRenderPreview(p);
+    SUP.chat[p].justOpened = true;
+    await supRefreshChat(p);
+    if (p === 'a') { await supTick(true); }
+  } catch (e) {
+    const m = String(e.message || '');
+    showToast(m.includes('SUPPORT_RATE_LIMIT') ? '⏳ Muitas mensagens seguidas. Aguarde um instante.'
+      : (m.startsWith('upload') || m === 'decode' || m === 'compress') ? '⚠️ Não foi possível enviar a imagem. Tente outra.'
+      : '⚠️ Não foi possível enviar. Verifique a conexão e tente de novo.', 5000);
+  } finally { SUP.sending = false; btn.disabled = false; btn.textContent = 'Enviar'; }
+}
+
+// ── Chat do usuário ───────────────────────────────────────────
+function supportOpen() {
+  if (!currentUser || supIsAdmin()) return;
+  supEl('sup-overlay').classList.add('show'); SUP.open = true;
+  supRefreshChat('u', true); supStartFast();
+}
+function supportClose() {
+  supVoiceStop(); supEl('sup-overlay').classList.remove('show'); SUP.open = false; supStopFastIfIdle();
+}
+function supSetFab(n) {
+  SUP.myUnread = n;
+  const d = supEl('sup-fab-dot'); if (!d) return;
+  d.textContent = n > 9 ? '9+' : n; d.style.display = n > 0 ? 'flex' : 'none';
+}
+
+// ── Painel do admin ───────────────────────────────────────────
+function supAdminBadge() {
+  const n = SUP.threads.reduce((s, t) => s + (t.unread_admin || 0), 0);
+  const b = supEl('sup-admin-badge'); if (!b) return;
+  b.textContent = n > 99 ? '99+' : n; b.style.display = n > 0 ? 'inline-block' : 'none';
+}
+function supAdminPanelActive() { const p = supEl('adm-panel-suporte'); return !!p && p.classList.contains('active'); }
+function supAdminOpen() { supRenderThreadList(); supTick(true); supStartFast(); supSweep(); }
+function supSetFilter(f) {
+  SUP.filter = f;
+  document.querySelectorAll('#sup-filters button').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  supRenderThreadList();
+}
+function supSetSearch(v) { SUP.search = (v || '').toLowerCase().trim(); supRenderThreadList(); }
+function supRenderThreadList() {
+  const box = supEl('sup-thread-list'); if (!box) return;
+  const q = SUP.search, qd = q.replace(/\D/g, '');
+  const list = SUP.threads.filter(t => {
+    if (SUP.filter !== 'all' && t.status !== SUP.filter) return false;
+    if (!q) return true;
+    return (t.name || '').toLowerCase().includes(q) || (qd && supFolder(t.cpf).includes(qd));
+  });
+  if (!list.length) {
+    box.innerHTML = `<div class="sup-chat-empty">${SUP.threads.length ? 'Nenhuma conversa neste filtro.' : 'Nenhuma mensagem de suporte ainda.'}</div>`;
+    return;
+  }
+  box.innerHTML = list.map(t => {
+    const ini = (t.name || '?').split(' ').filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+    const when = supFmtDay(t.last_message_at) === 'Hoje' ? supFmtTime(t.last_message_at) : supFmtDay(t.last_message_at);
+    const mine = t.last_sender === 'admin' ? 'Você: ' : '';
+    return `<div class="sup-thread ${t.cpf === SUP.activeCpf ? 'active' : ''}" onclick="supOpenThread('${t.cpf}')">
+      <div class="sup-thread-av">${escapeHtml(ini)}</div>
+      <div class="sup-thread-body">
+        <div class="sup-thread-top"><div class="sup-thread-name">${escapeHtml(t.name || t.cpf)}</div><div class="sup-thread-time">${when}</div></div>
+        <div class="sup-thread-last">${mine}${escapeHtml(t.last_message || '')}</div>
+        <div class="sup-thread-meta">
+          ${t.unread_admin > 0 ? `<span class="sup-unread">${t.unread_admin}</span>` : ''}
+          <span class="sup-pill ${t.status}">${t.status === 'resolved' ? 'Resolvida' : 'Pendente'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function supOpenThread(cpf) {
+  supVoiceStop();
+  SUP.activeCpf = cpf;
+  SUP.chat.a = { msgs: [], key: '' };
+  const th = SUP.threads.find(t => t.cpf === cpf);
+  supEl('sup-a-empty').style.display = 'none';
+  supEl('sup-a-chat').style.display = 'flex';
+  supEl('sup-admin-wrap').classList.add('chat-open');
+  supEl('sup-a-name').textContent = th ? (th.name || cpf) : cpf;
+  supEl('sup-a-cpf').textContent = 'CPF ' + cpf;
+  supUpdateResolveBtn();
+  supEl('sup-a-msgs').innerHTML = '<div class="sup-empty">Carregando...</div>';
+  supRenderThreadList();
+  supRefreshChat('a', true); supStartFast();
+}
+function supAdminBack() {
+  supVoiceStop();
+  supEl('sup-admin-wrap').classList.remove('chat-open');
+}
+function supUpdateResolveBtn() {
+  const th = SUP.threads.find(t => t.cpf === SUP.activeCpf);
+  const b = supEl('sup-a-resolve'); if (!b || !th) return;
+  const resolved = th.status === 'resolved';
+  b.textContent = resolved ? '↩️ Reabrir conversa' : '✅ Marcar como resolvido';
+  b.classList.toggle('reopen', resolved);
+}
+async function supToggleResolved() {
+  const th = SUP.threads.find(t => t.cpf === SUP.activeCpf); if (!th) return;
+  const novo = th.status === 'resolved' ? 'open' : 'resolved';
+  try {
+    const paths = await sb('/rpc/support_set_status', { method: 'POST', body: JSON.stringify({ p_cpf: th.cpf, p_status: novo }) });
+    th.status = novo; supUpdateResolveBtn(); supRenderThreadList();
+    if (novo === 'resolved') {
+      // Os prints saem do banco ao resolver; aqui apagamos os arquivos do armazenamento.
+      supDeleteFiles(Array.isArray(paths) ? paths : []);
+      SUP.chat.a = { msgs: [], key: '' }; supRefreshChat('a', true);
+    }
+    showToast(novo === 'resolved' ? '✅ Conversa resolvida. Prints apagados; o texto some em 3 dias.' : '↩️ Conversa reaberta.');
+  } catch (e) { showToast('⚠️ Não foi possível alterar o status. Tente de novo.'); }
+}
+
+// Apaga arquivos de imagem do armazenamento (falhas são recolhidas depois pela faxina)
+async function supDeleteFiles(paths) {
+  if (!paths || !paths.length) return;
+  try {
+    const res = await supStorage('/object/support', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: paths }) });
+    if (!res.ok) console.warn('Apagar prints falhou:', res.status);
+    paths.forEach(x => { delete SUP.urlCache[x]; });
+  } catch (e) { console.warn('Apagar prints falhou:', e); }
+}
+// Faxina (admin): roda a limpeza dos 3 dias e remove arquivos sem mensagem. No máx. 1x a cada 30 min.
+let supLastSweep = 0;
+async function supSweep() {
+  if (!supIsAdmin() || Date.now() - supLastSweep < 30 * 60 * 1000) return;
+  supLastSweep = Date.now();
+  try {
+    await sb('/rpc/support_cleanup', { method: 'POST', body: '{}' });
+    const orf = await sb('/rpc/support_orphan_images', { method: 'POST', body: '{}' });
+    if (Array.isArray(orf) && orf.length) await supDeleteFiles(orf);
+  } catch (e) { console.warn('Faxina do suporte falhou:', e); }
+}
+
+// ── Atualização periódica ─────────────────────────────────────
+async function supTick(force) {
+  if (!currentUser || (document.hidden && !force)) return;
+  const now = Date.now();
+  if (!force && now - SUP.lastTick < 4000) return;
+  SUP.lastTick = now;
+  try {
+    if (supIsAdmin()) {
+      const rows = await sb('/support_threads?select=*&order=last_message_at.desc&limit=200');
+      SUP.threads = rows; supAdminBadge();
+      if (supAdminPanelActive()) { supRenderThreadList(); supUpdateResolveBtn(); }
+      rows.forEach(t => {
+        if (t.unread_admin > 0 && t.last_sender === 'user' && Date.now() - new Date(t.last_message_at) < 6 * 3600 * 1000 && t.cpf !== SUP.activeCpf) {
+          notifyOnce('sup:a:' + t.cpf + ':' + t.last_message_at, '💬 Suporte: ' + (t.name || 'usuário'), (t.last_message || '').slice(0, 120));
+        }
+      });
+    } else {
+      const rows = await sb('/support_threads?select=unread_user,status,last_message,last_message_at,last_sender&limit=1');
+      const t = rows[0], n = t ? t.unread_user : 0;
+      if (SUP.open) return; // com o chat aberto quem atualiza é o ciclo rápido
+      supSetFab(n);
+      if (t && n > 0) notifyOnce('sup:u:' + t.last_message_at, '💬 O suporte respondeu', (t.last_message || '').slice(0, 120));
+    }
+  } catch (e) { /* sem conexão: tenta no próximo ciclo */ }
+}
+function supStartFast() {
+  if (SUP.fast) return;
+  SUP.fast = setInterval(() => {
+    if (document.hidden || !currentUser) return;
+    if (SUP.open) supRefreshChat('u');
+    if (supIsAdmin() && supAdminPanelActive()) { supTick(true); if (SUP.activeCpf) supRefreshChat('a'); }
+    supStopFastIfIdle();
+  }, 8000);
+}
+function supStopFastIfIdle() {
+  const adminBusy = supIsAdmin() && supAdminPanelActive();
+  if (!SUP.open && !adminBusy && SUP.fast) { clearInterval(SUP.fast); SUP.fast = null; }
+}
+setInterval(() => supTick(false), 30000);
+
+// Chamada pelo showScreen: mostra/esconde o botão e zera o estado ao sair
+function supportOnScreen(id) {
+  const fab = supEl('sup-fab'); if (!fab) return;
+  supAccountWatch();
+  const show = !!currentUser && currentUser.role !== 'admin' && ['app', 'busselect', 'week', 'ticket', 'cancel', 'monitor', 'blocked'].includes(id);
+  fab.style.display = show ? 'inline-flex' : 'none';
+  if (!currentUser || id === 'login') {
+    supportClose(); supStopFastIfIdle();
+    SUP.chat = { u: { msgs: [], key: '' }, a: { msgs: [], key: '' } };
+    SUP.threads = []; SUP.activeCpf = null; SUP.urlCache = {}; SUP.pendingFile = { u: null, a: null }; SUP.lastTick = 0;
+    supSetFab(0); supAdminBadge();
+    const w = supEl('sup-admin-wrap'); if (w) w.classList.remove('chat-open');
+    const ch = supEl('sup-a-chat'), em = supEl('sup-a-empty');
+    if (ch) ch.style.display = 'none'; if (em) em.style.display = '';
+    supRenderPreview('u'); supRenderPreview('a');
+  } else {
+    setTimeout(() => supTick(false), 400);
+  }
+}
+// Troca de conta sem passar pelo login: refaz a consulta de imediato
+var supLastCpf = null;
+function supAccountWatch() {
+  const c = currentUser ? currentUser.cpf : null;
+  if (c !== supLastCpf) { supLastCpf = c; SUP.lastTick = 0; }
+}
+supInit();
+
+
+// ── Ajuda na tela de login (quem não consegue entrar não tem acesso ao chat) ──
+// Coloque aqui o WhatsApp do suporte, só números com DDI+DDD (ex.: '5549999999999').
+// Vazio = o atalho mostra apenas a orientação em texto.
+const SUPPORT_WHATSAPP = '';
+function loginHelpOpen() {
+  const txt = document.getElementById('lh-text'), wa = document.getElementById('lh-wa');
+  const cpf = (document.getElementById('login-cpf') || {}).value || '';
+  if (SUPPORT_WHATSAPP) {
+    txt.textContent = 'Dúvidas, sugestões ou dificuldade para entrar? Fale com o suporte pelo WhatsApp. Depois de entrar, você também pode usar o botão "Suporte" dentro do app.';
+    const msg = 'Olá! Tenho uma dúvida/sugestão sobre o Place.' + (cpf.replace(/\D/g, '').length === 11 ? ' Meu CPF: ' + cpf + '.' : '');
+    wa.href = 'https://wa.me/' + SUPPORT_WHATSAPP + '?text=' + encodeURIComponent(msg);
+    wa.style.display = 'flex';
+  } else {
+    txt.textContent = 'Dúvidas, sugestões ou dificuldade para entrar? Procure o administrador da sua associação. Depois de entrar, você também pode falar com o suporte pelo botão "Suporte" dentro do app.';
+    wa.style.display = 'none';
+  }
+  document.getElementById('lh-overlay').classList.add('show');
+}
+function loginHelpClose() { document.getElementById('lh-overlay').classList.remove('show'); }
+
 function showToast(msg, duration) {
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
