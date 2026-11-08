@@ -6464,14 +6464,17 @@ async function subscribeToPush() {
       sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) });
     }
     const json = sub.toJSON();
-    // on_conflict=endpoint é essencial: sem isso, o PostgREST tenta o upsert pela
-    // chave primária (id, que nunca enviamos, pois é autogerada) — cai num INSERT
-    // simples, que sempre colide com a constraint única de "endpoint" e falha.
-    await sb('/push_subscriptions?on_conflict=endpoint', {
+    // Grava via função do banco (register_push_subscription): ela sempre usa o CPF do
+    // token de quem está logado e, se este aparelho já estava inscrito para OUTRO CPF
+    // (celular compartilhado, teste com admin e passageiro no mesmo aparelho), passa a
+    // inscrição para quem entrou agora. O upsert direto na tabela falhava nesse caso
+    // (a política de segurança não deixa atualizar a linha de outra pessoa).
+    await sb('/rpc/register_push_subscription', {
       method: 'POST',
-      prefer: 'resolution=merge-duplicates',
-      body: JSON.stringify([{ cpf: currentUser.cpf, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth }])
-    }).catch(dbErr);
+      body: JSON.stringify({ p_endpoint: json.endpoint, p_p256dh: json.keys.p256dh, p_auth: json.keys.auth })
+    });
+    // Falha de notificação NÃO é falta de conexão: cai no catch abaixo, que só avisa
+    // no console (sem mostrar "Sem conexão com o banco" ao usuário nem marcar offline).
   } catch(e) { console.warn('Inscrição push falhou:', e.message); }
 }
 
