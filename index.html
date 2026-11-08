@@ -346,6 +346,10 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
 /* ===== ADMIN TABS ===== */
 .admin-tabs{display:flex;gap:6px;background:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.7);border-radius:14px;padding:5px;margin-bottom:22px;backdrop-filter:blur(8px);}
 .admin-tabs .nav-btn{flex:1;}
+/* Barra principal do admin (7 abas): divide o espaço por igual e não deixa a última escapar */
+.admin-tabs-main{gap:4px;overflow:hidden;}
+.admin-tabs-main .nav-btn{min-width:0;padding:9px 6px;gap:6px;font-size:12.5px;line-height:1.2;text-align:center;flex-wrap:wrap;}
+.admin-tabs-main .nav-btn svg{width:15px;height:15px;}
 .admin-tab-panel{display:none;}
 .dash-sub-panel{display:none;}
 .dash-sub-panel.active{display:block;animation:screenIn 0.2s ease;}
@@ -407,6 +411,7 @@ body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#E8F5F3 
   /* Abas principais do admin empilham verticalmente (3 rótulos longos não cabem lado a lado) */
   .admin-tabs{flex-direction:column;}
   .admin-tabs .nav-btn{justify-content:flex-start;padding:11px 14px;font-size:13px;}
+  .admin-tabs-main .nav-btn{flex-wrap:nowrap;text-align:left;font-size:13px;padding:11px 14px;}
   /* Sub-abas de usuários (2 itens) permanecem lado a lado, com texto menor */
   #adm-panel-usuarios .admin-tabs{flex-direction:row;}
   #adm-panel-usuarios .admin-tabs .nav-btn{justify-content:center;font-size:12px;padding:10px 8px;}
@@ -1650,7 +1655,7 @@ body{-webkit-tap-highlight-color:transparent;}
     </div>
 
     <!-- ADMIN TABS -->
-    <div class="admin-tabs">
+    <div class="admin-tabs admin-tabs-main">
       <button class="nav-btn active" id="adm-tab-relacao" onclick="switchAdminTab('relacao')">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-8H9V9h6v2z"/></svg>
         Relação de Passageiros
