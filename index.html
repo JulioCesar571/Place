@@ -14,8 +14,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
 <meta name="application-name" content="Place">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="preconnect" href="https://mqkyqlconpldxcnviepy.supabase.co" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 :root {
   --c1:#E8F5F3;--c2:#B2D9D0;--c3:#7EC8BC;
@@ -2457,6 +2462,12 @@ async function sb(path, options = {}, _retried) {
   }
   if (!res.ok) throw new Error('DB ' + res.status + ' ' + (await res.text()).slice(0, 120));
   dbOnline = true;
+  if (options.withCount) {
+    // Devolve também o total de linhas (cabeçalho Content-Range: "0-999/11611")
+    const cr = res.headers.get('content-range') || '';
+    const m = cr.match(/\/(\d+)$/);
+    return { rows: await res.json(), total: m ? parseInt(m[1], 10) : null };
+  }
   if ((options.method || 'GET') === 'GET' || (options.prefer || '').includes('representation')) {
     return res.json();
   }
@@ -2558,14 +2569,28 @@ function dbRefresh() {
 // não importa o tamanho da tabela.
 async function fetchAllRows(basePath) {
   const pageSize = 1000;
-  let all = [];
-  let offset = 0;
   const sep = basePath.includes('?') ? '&' : '?';
+  const url = off => `${basePath}${sep}limit=${pageSize}&offset=${off}`;
+  // 1ª página já traz o total de linhas — as demais páginas saem TODAS ao mesmo
+  // tempo (antes eram uma de cada vez: 12 idas ao servidor em fila).
+  const first = await sb(url(0), { prefer: 'count=exact', withCount: true });
+  let all = Array.isArray(first.rows) ? first.rows : [];
+  if (all.length < pageSize) return all;
+  let offset = pageSize;
+  if (first.total != null && first.total > pageSize) {
+    const nPages = Math.ceil(first.total / pageSize) - 1;
+    const rest = await Promise.all(Array.from({ length: nPages }, (_, i) => sb(url(pageSize * (i + 1)))));
+    rest.forEach(b => { if (Array.isArray(b)) all = all.concat(b); });
+    offset = pageSize * (nPages + 1);
+    const last = rest[rest.length - 1];
+    if (!Array.isArray(last) || last.length < pageSize) return all; // total conferido
+  }
+  // Sem total no cabeçalho (ou a tabela cresceu durante a leitura): segue em fila, como antes
   while (true) {
-    const batch = await sb(`${basePath}${sep}limit=${pageSize}&offset=${offset}`);
+    const batch = await sb(url(offset));
     if (!Array.isArray(batch) || batch.length === 0) break;
     all = all.concat(batch);
-    if (batch.length < pageSize) break; // veio menos que o lote — última página
+    if (batch.length < pageSize) break;
     offset += pageSize;
   }
   return all;
@@ -3912,7 +3937,14 @@ async function doLogin() {
   }
 
   // Base atualizada + validação legada (dupla verificação durante a ponte)
-  if (!USERS[cpf]) { await dbRefresh(); }
+  if (!USERS[cpf]) {
+    // Só este usuário (1 linha) — antes baixava a base inteira só para achar o CPF
+    try {
+      const rows = await sb('/users?select=*&cpf=eq.' + encodeURIComponent(cpf));
+      if (Array.isArray(rows) && rows[0]) USERS[cpf] = rowToUser(rows[0]);
+    } catch(e) {}
+    if (!USERS[cpf]) { await dbRefresh(); }
+  }
   const user = USERS[cpf];
   if (!user) { showToast('CPF ou senha incorretos'); return; }
   if (!authSession) {
@@ -3957,17 +3989,45 @@ async function loginSuccess(user) {
   selected.clear();
   passagensFilterStatus = 'active';
 
-  // Sincroniza antes de decidir a tela inicial (passagens vêm do banco)
-  const syncOk = await dbRefresh();
-  // A sincronização pode ter começado antes do login — reconstrói do cache
-  rebuildUserPassagens();
+  // Atalho rápido: busca SÓ as passagens deste passageiro (poucas linhas). Se ele já
+  // tem viagem marcada, abre "Minhas Passagens" na hora e o resto do banco (mapa de
+  // poltronas, fila, trocas) sincroniza em segundo plano. Sem passagens, ou se o
+  // atalho falhar, segue o caminho completo de antes.
+  let quickOk = false;
+  try {
+    const mineRows = await sb('/tickets?select=*&cpf=eq.' + encodeURIComponent(user.cpf) + '&order=created_at.desc');
+    if (Array.isArray(mineRows)) {
+      const todayQ = parseTicketDate(getTodayStr());
+      const travelQ = t => t.travelDate || (t.date ? t.date.slice(0,10) : null);
+      const mine = mineRows.map(rowToTicket)
+        .filter(t => { const d = parseTicketDate(travelQ(t)); return d && d >= todayQ; })
+        .sort((a, b) => parseTicketDate(travelQ(a)) - parseTicketDate(travelQ(b)));
+      if (mine.some(t => !t.cancelled)) {
+        passagens.length = 0;
+        mine.forEach(t => passagens.push(t));
+        quickOk = true;
+      }
+    }
+  } catch(e) { /* segue pelo caminho completo */ }
+
+  let syncOk = false;
+  if (quickOk) {
+    dbRefresh().then(ok => { if (ok) { persistOwnUser(user); } });
+    try { localStorage.setItem('place_my_tickets_' + user.cpf, JSON.stringify(passagens)); } catch(e) {}
+    syncOk = true;
+  } else {
+    // Sincroniza antes de decidir a tela inicial (passagens vêm do banco)
+    syncOk = await dbRefresh();
+    // A sincronização pode ter começado antes do login — reconstrói do cache
+    rebuildUserPassagens();
+  }
 
   // Sincronizou de verdade agora? Salva um retrato local SÓ DO PRÓPRIO usuário
   // neste aparelho (não a base inteira — isso exporia a senha de todo mundo no
   // celular de um passageiro comum). Sem isso, só admins geravam esse cache —
   // um passageiro comum nunca tinha USERS[cpf] disponível num login futuro sem
   // internet, mesmo com o verificador de senha offline já salvo corretamente.
-  if (syncOk) { persistOwnUser(user); }
+  if (syncOk && !quickOk) { persistOwnUser(user); }
 
   // Essa tentativa de sincronizar falhou (offline ou banco fora do ar) e nada
   // sincronizou agora? Usa a última cópia salva localmente na sincronização boa
