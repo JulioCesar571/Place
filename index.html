@@ -2349,17 +2349,21 @@ async function authRequest(path, body) {
   // Sem isso, uma falta total de internet (fetch nem chega a ter resposta) derrubava
   // o login inteiro sem cair no caminho legado — o app ficava preso, sem tentar a
   // verificação local (que já funciona 100% offline, ver verifyPass()).
+  if (navigator.onLine === false) return { ok: false, status: 0, data: {}, offline: true };
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 6000); // sinal fraco: desiste em 6 s e usa o login salvo no aparelho
   try {
     const res = await fetch(SB_BASE + path, {
       method: 'POST',
       headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: ctl.signal
     });
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data };
   } catch(e) {
     return { ok: false, status: 0, data: {}, offline: true };
-  }
+  } finally { clearTimeout(to); }
 }
 
 function cpfToEmail(cpf) { return String(cpf).replace(/\D/g, '') + '@place.local'; }
@@ -2371,6 +2375,7 @@ async function authLogin(cpf, password) {
   // 1ª tentativa: conta já migrada?
   let r = await authRequest('/auth/v1/token?grant_type=password', { email, password });
   if (r.ok) return { ok: true, session: r.data };
+  if (r.offline) return { ok: false, reason: 'provision_unavailable', offline: true }; // sem rede: não espera a 2ª chamada
 
   // Conta não existe/credencial inválida → aciona a ponte (Edge Function)
   const p = await authRequest('/functions/v1/provision-user', { cpf, password });
@@ -2443,7 +2448,24 @@ setInterval(() => { if (authSession && !document.hidden) authRefresh(); }, 50 * 
 authLoadSession();
 
 
+// Erro de rede (sem internet / sinal fraco / tempo esgotado) — diferente de o banco responder com erro
+function isNetErr(e) {
+  return !!e && (e instanceof TypeError || e.name === 'AbortError' || /timeout|failed to fetch|networkerror|load failed|offline/i.test(e.message || ''));
+}
+// Toda chamada ao banco tem limite de tempo. Sem isso, em sinal fraco ("tem barrinha, mas
+// não carrega") o fetch ficava pendurado para sempre e o app nunca caía no modo offline.
 async function sb(path, options = {}, _retried) {
+  if (navigator.onLine === false) throw new TypeError('offline');
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), options.timeout || 25000);
+  try {
+    return await _sbCall(path, { ...options, signal: ctl.signal }, _retried);
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('DB timeout');
+    throw e;
+  } finally { clearTimeout(to); }
+}
+async function _sbCall(path, options = {}, _retried) {
   const token = authSession && authSession.access_token ? authSession.access_token : SB_KEY;
   const res = await fetch(SB_URL + path, {
     ...options,
@@ -3909,6 +3931,7 @@ function maskCPF(el) {
   el.value = v;
 }
 
+let _loginOffline = false; // o login atual aconteceu sem conseguir falar com o servidor
 async function doLogin() {
   const cpf = document.getElementById('login-cpf').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
@@ -3917,6 +3940,7 @@ async function doLogin() {
 
   // ═══ PONTE AUTH: autentica no servidor (migra a conta se necessário) ═══
   const auth = await authLogin(cpf, pass);
+  _loginOffline = !!auth.offline;
   if (auth.ok) {
     authSaveSession(auth.session);
     await saveOfflineAuthVerifier(cpf, pass); // guarda confirmação local p/ próximos logins offline
@@ -3937,10 +3961,10 @@ async function doLogin() {
   }
 
   // Base atualizada + validação legada (dupla verificação durante a ponte)
-  if (!USERS[cpf]) {
+  if (!USERS[cpf] && !_loginOffline) {
     // Só este usuário (1 linha) — antes baixava a base inteira só para achar o CPF
     try {
-      const rows = await sb('/users?select=*&cpf=eq.' + encodeURIComponent(cpf));
+      const rows = await sb('/users?select=*&cpf=eq.' + encodeURIComponent(cpf), { timeout: 8000 });
       if (Array.isArray(rows) && rows[0]) USERS[cpf] = rowToUser(rows[0]);
     } catch(e) {}
     if (!USERS[cpf]) { await dbRefresh(); }
@@ -3994,8 +4018,12 @@ async function loginSuccess(user) {
   // poltronas, fila, trocas) sincroniza em segundo plano. Sem passagens, ou se o
   // atalho falhar, segue o caminho completo de antes.
   let quickOk = false;
+  // Sem internet (ou sinal tão fraco que o login já desistiu do servidor): não gasta
+  // tempo tentando — abre direto com as passagens salvas neste aparelho.
+  let netFail = _loginOffline || navigator.onLine === false;
   try {
-    const mineRows = await sb('/tickets?select=*&cpf=eq.' + encodeURIComponent(user.cpf) + '&order=created_at.desc');
+    if (netFail) throw new TypeError('offline');
+    const mineRows = await sb('/tickets?select=*&cpf=eq.' + encodeURIComponent(user.cpf) + '&order=created_at.desc', { timeout: 8000 });
     if (Array.isArray(mineRows)) {
       const todayQ = parseTicketDate(getTodayStr());
       const travelQ = t => t.travelDate || (t.date ? t.date.slice(0,10) : null);
@@ -4008,10 +4036,14 @@ async function loginSuccess(user) {
         quickOk = true;
       }
     }
-  } catch(e) { /* segue pelo caminho completo */ }
+  } catch(e) { if (isNetErr(e)) netFail = true; /* senão, segue pelo caminho completo */ }
 
   let syncOk = false;
-  if (quickOk) {
+  if (netFail && !quickOk) {
+    // Sem rede: tenta sincronizar em segundo plano (se a conexão voltar) e já abre com o cache local
+    dbRefresh().then(ok => { if (ok) { persistOwnUser(user); } }).catch(() => {});
+    rebuildUserPassagens();
+  } else if (quickOk) {
     dbRefresh().then(ok => { if (ok) { persistOwnUser(user); } });
     try { localStorage.setItem('place_my_tickets_' + user.cpf, JSON.stringify(passagens)); } catch(e) {}
     syncOk = true;
