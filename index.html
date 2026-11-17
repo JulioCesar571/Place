@@ -3506,9 +3506,46 @@ function validateCancelForm() {
   }
 }
 
-function doCancel() {
-  if (cancelTicketIdx === null) return;
+// Confirma o cancelamento NO BANCO antes de mexer na tela. Antes, o app mostrava
+// "cancelada" na hora e enviava o pedido sem esperar resposta: se o pedido se perdia
+// (sinal fraco, sessão vencida, banco lento), o passageiro achava que tinha cancelado
+// e a poltrona continuava reservada. Agora só vale se o banco devolver a linha alterada.
+let _cancelBusy = false;
+async function confirmCancelOnServer(code, fields) {
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      // return=representation: um UPDATE barrado pela política (RLS) não dá erro, só
+      // atualiza 0 linhas. Conferimos se a linha voltou e se está mesmo cancelada.
+      const rows = await sb('/tickets?code=eq.' + encodeURIComponent(code),
+        { method: 'PATCH', prefer: 'return=representation', timeout: 15000, body: JSON.stringify(fields) });
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('ZERO_ROWS');
+      if (rows[0].cancelled !== true) throw new Error('NOT_APPLIED');
+      return rows[0];
+    } catch (e) {
+      lastErr = e;
+      // Repete só quando vale a pena: rede, tempo esgotado, banco sobrecarregado.
+      // Recusa de permissão ou 0 linhas não melhoram repetindo.
+      const retry = navigator.onLine !== false && (isNetErr(e) || /DB (5\d\d|429)/.test(e.message || ''));
+      if (!retry || i === 2) break;
+      await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+function cancelFailMessage(e) {
+  const m = String((e && e.message) || '');
+  if (/ZERO_ROWS|NOT_APPLIED|DB 40[13]|42501|row-level|permission denied/i.test(m))
+    return '⚠️ O sistema não aceitou o cancelamento. Sua poltrona continua reservada. Saia do app, entre de novo e tente outra vez.';
+  if (/DB (5\d\d|429)/.test(m))
+    return '⚠️ O sistema está sobrecarregado agora. Sua poltrona continua reservada — tente de novo em instantes.';
+  return '⚠️ Sem conexão com o servidor. Sua poltrona continua reservada — confira a internet e tente de novo.';
+}
+
+async function doCancel() {
+  if (cancelTicketIdx === null || _cancelBusy) return;
   const t = passagens[cancelTicketIdx];
+  if (!t) return;
   const rawMotivo = cancelReason === 'outro'
     ? document.getElementById('cancel-textarea').value.trim()
     : cancelReason === 'imprevisto' ? 'Imprevisto' : 'Desistência';
@@ -3516,7 +3553,24 @@ function doCancel() {
   const now = new Date();
   const cancelledAt = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
-  // Mark as cancelled in BOTH stores (passenger list + admin list)
+  // 1) Confirma no banco. Só depois disso a passagem aparece como cancelada.
+  const btn = document.getElementById('btn-do-cancel');
+  const btnLabel = btn ? btn.textContent : '';
+  _cancelBusy = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Cancelando…'; }
+  try {
+    await confirmCancelOnServer(t.code, { cancelled: true, cancel_reason: motivo, cancelled_at: cancelledAt, cancelled_by: 'passenger' });
+  } catch (e) {
+    console.warn('[cancelamento] não confirmado pelo banco —', t.code, e && e.message);
+    _cancelBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
+    showToast(cancelFailMessage(e), 9000);
+    return; // nada muda na tela nem na memória: a passagem continua ativa
+  }
+  _cancelBusy = false;
+  if (btn) btn.textContent = btnLabel;
+
+  // 2) Banco confirmou — agora sim atualiza a tela (passenger list + admin list)
   passagens[cancelTicketIdx].cancelled = true;
   passagens[cancelTicketIdx].cancelReason = motivo;
   passagens[cancelTicketIdx].cancelledAt = cancelledAt;
@@ -3528,7 +3582,6 @@ function doCancel() {
     allPassagens[apIdx].cancelledAt = cancelledAt;
     allPassagens[apIdx].cancelledBy = 'passenger';
   }
-  dbPatchTicket(t.code, { cancelled: true, cancel_reason: motivo, cancelled_at: cancelledAt, cancelled_by: 'passenger' });
 
   // Free ALL seats of this ticket (handles "5" and "5, 6")
   String(t.seat).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)).forEach(seatNum => {
